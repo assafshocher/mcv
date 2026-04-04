@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>00970202 — Modern Computer Vision — Technion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Technion_Logo.svg/330px-Technion_Logo.svg.png" alt="Technion" style="height:32px; width:auto; filter: brightness(0) invert(1); opacity:0.9;" onerror="this.style.display='none'">
+      <span>Modern Computer Vision</span>
+    </a>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="schedule.html">Schedule</a></li>
+      <li><a href="project.html">Final Project</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">00970202 — Technion — Faculty of Data and Decision Sciences — Spring 2026</div>
+    <h1>Modern <span class="accent">Computer Vision</span></h1>
+  </div>
+
+  <!-- Hero image — drop hero.png in the same folder -->
+  <div class="hero-image">
+    <img src="hero.png" alt="From light to understanding: the computer vision pipeline" onerror="this.parentElement.innerHTML='<div style=\'aspect-ratio:3/1; background:linear-gradient(135deg, var(--bg-secondary), var(--bg-card)); display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:0.85rem;\'>Drop hero.png here</div>'">
+  </div>
+</section>
+
+<!-- OVERVIEW — centered, no title -->
+<section class="section" id="overview" style="padding-top: 24px;">
+  <div class="overview-text">
+    <p>
+      Computer vision today is driven by deep networks, but the way we design, train, and reason about them is deeply rooted in classical vision and signal processing. To truly do research and build creative new methods, you need both: learning and understanding pixels. MCV is roughly 70% deep learning for vision and 30% the classical foundations that enable it.
+    </p>
+    <p>
+      We go from the very basic math all the way to state-of-the-art practice. The goal is to get to the bottom of things, develop real intuition, and encourage creative new thinking. Five homework sets each have three tracks: theory, from-scratch implementation, and applied. The course has a research orientation and concludes with a final research project.
+    </p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- LOGISTICS -->
+<section class="section">
+  <h2 class="section-title">Logistics</h2>
+  <div class="cards cards-compact">
+    <div class="card card-sm">
+      <h3>📅 When</h3>
+      <p>Sundays, Spring 2026. Lecture 13:30–16:30, Tutorial 16:30–17:30.</p>
+    </div>
+    <div class="card card-sm">
+      <h3>📍 Where</h3>
+      <p>Cooper Building (Data Science), Room 216.</p>
+    </div>
+    <div class="card card-sm">
+      <h3>🎓 Credits</h3>
+      <p>3.5 credits. 5 homework sets (theory + from-scratch + applied) and a final research project.</p>
+    </div>
+    <div class="card card-sm">
+      <h3>💻 Prerequisites</h3>
+      <p><code>00940412</code> &amp; <code>01040166</code> &amp; <code>00960411</code></p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- STAFF -->
+<section class="section" id="staff">
+  <h2 class="section-title">Course Staff</h2>
+  <div class="staff-grid">
+    <div class="staff-card">
+      <div class="staff-avatar">
+        <img src="assaf.png" alt="Assaf Shocher" onerror="this.style.display='none'; this.parentElement.textContent='👨‍🏫';">
+      </div>
+      <div class="staff-info">
+        <h4>Assaf Shocher</h4>
+        <p>Instructor</p>
+        <a href="https://assafshocher.github.io" target="_blank">assafshocher.github.io</a>
+      </div>
+    </div>
+    <div class="staff-card">
+      <div class="staff-avatar">
+        <img src="amit.jpg" alt="Amit Shmidov" onerror="this.style.display='none'; this.parentElement.textContent='🧑‍💻';">
+      </div>
+      <div class="staff-info">
+        <h4>Amit Shmidov</h4>
+        <p>Teaching Assistant</p>
+      </div>
+    </div>
+    <div class="staff-card">
+      <div class="staff-avatar">
+        <img src="oren.jpg" alt="Oren Chikli" onerror="this.style.display='none'; this.parentElement.textContent='🧑‍💻';">
+      </div>
+      <div class="staff-info">
+        <h4>Oren Chikli</h4>
+        <p>Teaching Assistant</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    00970202 Modern Computer Vision — <a href="https://www.technion.ac.il" target="_blank">Technion</a> — Faculty of Data and Decision Sciences — Spring 2026
+  </p>
+</footer>
+
+</body>
+</html>

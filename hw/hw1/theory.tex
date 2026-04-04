@@ -1,0 +1,77 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{Modern Computer Vision} --- Technion, Spring 2026}
+\rhead{HW 1 --- Theory}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Operators
+\DeclareMathOperator{\conv}{*}
+\DeclareMathOperator{\supp}{supp}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Homework 1 --- Theory}\\[6pt]
+  \textcolor{gray}{Due: April 26, 2026}
+\end{center}
+
+\vspace{6pt}
+
+\noindent
+Recall the definition of continuous convolution:
+\[
+(f \conv g)(t) \;=\; \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau
+\]
+
+\noindent
+A system $T$ is \textbf{linear} if $T\{\alpha f + \beta g\} = \alpha\, T\{f\} + \beta\, T\{g\}$.\\
+A system $T$ is \textbf{time-invariant} if $T\{f(t-t_0)\} = (Tf)(t-t_0)$.\\
+A system that is both is called \textbf{LTI}.
+
+\vspace{14pt}
+\noindent\textbf{Prove:}
+
+\begin{enumerate}[leftmargin=2em, itemsep=10pt]
+
+  \item \textbf{Convolution is commutative:}\quad $f \conv g \;=\; g \conv f$
+
+  \item \textbf{Convolution is associative:}\quad $(f \conv g) \conv h \;=\; f \conv (g \conv h)$
+
+  \item \textbf{Convolution is distributive:}\quad $f \conv (g + h) \;=\; f \conv g \;+\; f \conv h$
+
+  \item \textbf{Delta is the identity:}\quad $f \conv \delta \;=\; f$
+
+  \item \textbf{Convolution commutes with differentiation:}
+  \[\frac{d}{dt}(f \conv g) \;=\; \frac{df}{dt} \conv g \;=\; f \conv \frac{dg}{dt}\]
+
+  \item \textbf{Support adds:}\quad $\supp(f \conv g) \;\subseteq\; \supp(f) + \supp(g)$
+
+  \textcolor{gray}{\small [Hint: when is the integrand nonzero?]}
+
+  \item \textbf{LTI if and only if convolution:}\quad a system is LTI $\Leftrightarrow$ it can be written as convolution with some kernel $h$.
+
+  \textcolor{gray}{\small [Hint: $\Leftarrow$ is easy.\; $\Rightarrow$\, express $f$ using $\delta$]}
+
+  \item \textbf{Gaussians convolve into Gaussians:}
+  \[ g_{\sigma_1} \conv g_{\sigma_2} \;=\; g_{\sqrt{\sigma_1^2 + \sigma_2^2}} \,,\quad \text{where}\quad g_\sigma(t) = \tfrac{1}{\sigma\sqrt{2\pi}}\exp\!\left(-\tfrac{t^2}{2\sigma^2}\right) \]
+
+  \textcolor{gray}{\small [Hint: complete the square]}
+
+\end{enumerate}
+
+\vfill
+\begin{center}
+{\small\textcolor{gray}{Modern Computer Vision --- Technion --- Spring 2026 --- Assaf Shocher}}
+\end{center}
+
+\end{document}

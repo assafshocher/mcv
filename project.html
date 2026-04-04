@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Final Project — Modern Computer Vision</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Technion_Logo.svg/330px-Technion_Logo.svg.png" alt="Technion" style="height:32px;width:auto;filter:brightness(0) invert(1);opacity:0.9;" onerror="this.style.display='none'">
+      <span>Modern Computer Vision</span>
+    </a>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="schedule.html">Schedule</a></li>
+      <li><a href="project.html" class="active">Final Project</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- CONTENT -->
+<section class="section">
+  <h2 class="section-title">Final Project</h2>
+  <p class="section-subtitle">Form a group and register below.</p>
+
+  <div class="cards" style="margin-bottom: 48px;">
+    <div class="card">
+      <div class="card-icon">👥</div>
+      <h3>Group Size</h3>
+      <p>Teams of 4–5 students.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📅</div>
+      <h3>Timeline</h3>
+      <p>Registration opens Week 6 (May 17). Milestone report due Week 12 (Jun 28). Final submission at the end of the exams period (date TBD).</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <h3>Deliverables</h3>
+      <p>A 2–3 page report (intro, method, results), working code, and a 5-minute presentation or recorded demo.</p>
+    </div>
+  </div>
+
+  <hr class="divider" style="margin-bottom: 48px;">
+
+  <!-- REGISTRATION FORM -->
+  <div id="register">
+    <h3 class="section-title" style="font-size:1.2rem;">Register Your Group</h3>
+    <p class="section-subtitle">Fill in all group members' details (4–5 members).</p>
+
+    <div class="form-card">
+      <form id="group-form" onsubmit="return handleSubmit(event)">
+
+        <div class="form-group">
+          <label class="form-label">Project Title (optional — can update later)</label>
+          <input type="text" class="form-input" id="project-title" placeholder="e.g., Real-time Style Transfer on Mobile">
+        </div>
+
+        <div id="members-container">
+          <!-- Member 1 -->
+          <div class="member-entry" data-index="1">
+            <label class="form-label" style="margin-top:8px;">Member 1</label>
+            <div class="member-row">
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Full name" required>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Student ID" required pattern="[0-9]{6,9}" title="6-9 digit student ID">
+              </div>
+              <div style="width:36px;"></div>
+            </div>
+          </div>
+          <!-- Member 2 -->
+          <div class="member-entry" data-index="2">
+            <label class="form-label" style="margin-top:8px;">Member 2</label>
+            <div class="member-row">
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Full name" required>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Student ID" required pattern="[0-9]{6,9}" title="6-9 digit student ID">
+              </div>
+              <div style="width:36px;"></div>
+            </div>
+          </div>
+          <!-- Member 3 -->
+          <div class="member-entry" data-index="3">
+            <label class="form-label" style="margin-top:8px;">Member 3</label>
+            <div class="member-row">
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Full name" required>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Student ID" required pattern="[0-9]{6,9}" title="6-9 digit student ID">
+              </div>
+              <div style="width:36px;"></div>
+            </div>
+          </div>
+          <!-- Member 4 -->
+          <div class="member-entry" data-index="4">
+            <label class="form-label" style="margin-top:8px;">Member 4</label>
+            <div class="member-row">
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Full name" required>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <input type="text" class="form-input" placeholder="Student ID" required pattern="[0-9]{6,9}" title="6-9 digit student ID">
+              </div>
+              <div style="width:36px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-add" id="add-member-btn" onclick="addMember()">
+          + Add member
+        </button>
+
+        <div class="form-group">
+          <label class="form-label">Contact Email</label>
+          <input type="email" class="form-input" id="contact-email" placeholder="your-email@campus.technion.ac.il" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <textarea class="form-input" id="notes" rows="3" placeholder="Anything you'd like us to know — preferred topic area, special circumstances, etc." style="resize:vertical;"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:8px;">
+          Register Group
+        </button>
+
+        <p class="form-note">
+          Registration data is sent to a Google Form. You'll receive a confirmation at the email provided.
+        </p>
+      </form>
+
+      <!-- Success message (hidden by default) -->
+      <div id="success-msg" style="display:none; text-align:center; padding:32px 0;">
+        <div style="font-size:2rem; margin-bottom:12px;">✓</div>
+        <h3 style="color:var(--green); margin-bottom:8px;">Group Registered</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem;">You should receive a confirmation email shortly. You can update your details by submitting again.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    Modern Computer Vision — <a href="https://www.technion.ac.il" target="_blank">Technion — Israel Institute of Technology</a> — Spring 2026
+  </p>
+</footer>
+
+<script>
+  let memberCount = 4;
+  const maxMembers = 5;
+
+  function addMember() {
+    if (memberCount >= maxMembers) return;
+    memberCount++;
+
+    const container = document.getElementById('members-container');
+    const entry = document.createElement('div');
+    entry.className = 'member-entry';
+    entry.dataset.index = memberCount;
+    entry.innerHTML = `
+      <label class="form-label" style="margin-top:8px;">Member ${memberCount}</label>
+      <div class="member-row">
+        <div class="form-group" style="margin-bottom:0">
+          <input type="text" class="form-input" placeholder="Full name" required>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <input type="text" class="form-input" placeholder="Student ID" required pattern="[0-9]{6,9}" title="6-9 digit student ID">
+        </div>
+        <button type="button" class="btn-icon" onclick="removeMember(this)" title="Remove member">×</button>
+      </div>
+    `;
+    container.appendChild(entry);
+
+    if (memberCount >= maxMembers) {
+      document.getElementById('add-member-btn').style.display = 'none';
+    }
+  }
+
+  function removeMember(btn) {
+    btn.closest('.member-entry').remove();
+    memberCount--;
+    document.getElementById('add-member-btn').style.display = '';
+    // Re-label members
+    document.querySelectorAll('.member-entry').forEach((entry, i) => {
+      entry.querySelector('.form-label').textContent = `Member ${i + 1}`;
+      entry.dataset.index = i + 1;
+    });
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+
+    // Collect form data
+    const data = {
+      title: document.getElementById('project-title').value,
+      email: document.getElementById('contact-email').value,
+      notes: document.getElementById('notes').value,
+      members: []
+    };
+
+    document.querySelectorAll('.member-entry').forEach(entry => {
+      const inputs = entry.querySelectorAll('input');
+      data.members.push({
+        name: inputs[0].value,
+        id: inputs[1].value
+      });
+    });
+
+    console.log('Group registration data:', data);
+
+    /*
+     * ──────────────────────────────────────────────
+     * TO CONNECT TO GOOGLE FORMS:
+     *
+     * 1. Create a Google Form with fields:
+     *    - Project Title (short answer)
+     *    - Member 1 Name, Member 1 ID
+     *    - Member 2 Name, Member 2 ID
+     *    - Member 3 Name, Member 3 ID (optional)
+     *    - Contact Email
+     *    - Notes
+     *
+     * 2. Get the form's "pre-filled link" to find entry IDs
+     *    (each field has an entry.XXXXXXX ID)
+     *
+     * 3. POST to:
+     *    https://docs.google.com/forms/d/e/YOUR_FORM_ID/formResponse
+     *    with the entry IDs as form data
+     *
+     * Example:
+     *   const formData = new FormData();
+     *   formData.append('entry.111111', data.title);
+     *   formData.append('entry.222222', data.members[0].name);
+     *   // ... etc
+     *   fetch(FORM_URL, { method: 'POST', body: formData, mode: 'no-cors' });
+     * ──────────────────────────────────────────────
+     */
+
+    // Show success (replace with actual submission later)
+    document.getElementById('group-form').style.display = 'none';
+    document.getElementById('success-msg').style.display = 'block';
+
+    return false;
+  }
+</script>
+
+</body>
+</html>

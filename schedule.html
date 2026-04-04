@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule — Modern Computer Vision</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Technion_Logo.svg/330px-Technion_Logo.svg.png" alt="Technion" style="height:32px; width:auto; filter: brightness(0) invert(1); opacity:0.9;" onerror="this.style.display='none'">
+      <span>Modern Computer Vision</span>
+    </a>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="schedule.html" class="active">Schedule</a></li>
+      <li><a href="project.html">Final Project</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<section class="section" style="padding-bottom: 24px;">
+  <h2 class="section-title">Course Schedule</h2>
+  <p class="section-subtitle">Spring 2026 — Sundays. Lecture 13:30–16:30, Tutorial 16:30–17:30.</p>
+</section>
+
+<!-- SCHEDULE TABLE -->
+<section class="section" style="padding-top: 0;">
+  <div class="schedule-wrap">
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th style="width:50px">Wk</th>
+          <th style="width:100px">Date</th>
+          <th style="width:20%">Lecture</th>
+          <th style="width:20%">Tutorial</th>
+          <th>Assignments</th>
+          <th style="width:10%">Resources</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- ═══════════ HW 1 (Wk 1–2, due Apr 26) ═══════════ -->
+        <tr>
+          <td class="wk-num">1</td>
+          <td class="date-cell">Apr 12</td>
+          <td class="lecture-cell">Basics of Imaging</td>
+          <td class="tutorial-cell">PyTorch + Point Ops</td>
+          <td class="hw-cell" rowspan="2">
+            <span class="hw-badge b1">HW 1</span>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Download assignments</span>
+              <div class="hw-links-row">
+                <a href="hw/hw1/theory.pdf" class="hw-link theory"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="hw/hw1/from_scratch.zip" class="hw-link scratch" download="from_scratch.zip"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="hw/hw1/applied.zip" class="hw-link applied" download="applied.zip"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Submit</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <span class="hw-due">Due: Apr 26</span>
+          </td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+        <tr>
+          <td class="wk-num">2</td>
+          <td class="date-cell">Apr 19</td>
+          <td class="lecture-cell">ML Basics</td>
+          <td class="tutorial-cell">Linear Classification</td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+
+        <!-- ═══════════ HW 2 (Wk 3–4, due May 10) ═══════════ -->
+        <tr>
+          <td class="wk-num">3</td>
+          <td class="date-cell">Apr 26</td>
+          <td class="lecture-cell">Neural Networks</td>
+          <td class="tutorial-cell">PyTorch Autograd</td>
+          <td class="hw-cell" rowspan="2">
+            <span class="hw-badge b2">HW 2</span>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Download assignments</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Submit</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <span class="hw-due">Due: May 10</span>
+          </td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+        <tr>
+          <td class="wk-num">4</td>
+          <td class="date-cell">May 3</td>
+          <td class="lecture-cell">Frequencies &amp; Sampling</td>
+          <td class="tutorial-cell">Image Pyramids</td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+
+        <!-- ═══════════ HW 3 (Wk 5–7, due May 31) ═══════════ -->
+        <tr>
+          <td class="wk-num">5</td>
+          <td class="date-cell">May 10</td>
+          <td class="lecture-cell">CNNs</td>
+          <td class="tutorial-cell">Adversarial Examples</td>
+          <td class="hw-cell" rowspan="3">
+            <span class="hw-badge b3">HW 3</span>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Download assignments</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Submit</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <span class="hw-due">Due: May 31</span>
+          </td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+        <tr>
+          <td class="wk-num">6</td>
+          <td class="date-cell">May 17</td>
+          <td class="lecture-cell">Training &amp; Architectures</td>
+          <td class="tutorial-cell">Transformers</td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+        <tr>
+          <td class="wk-num">7</td>
+          <td class="date-cell">May 24</td>
+          <td class="lecture-cell">Epipolar Geometry</td>
+          <td class="tutorial-cell">TBD</td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+
+        <!-- ═══════════ HW 4 (Wk 8–9, due Jun 14) ═══════════ -->
+        <tr>
+          <td class="wk-num">8</td>
+          <td class="date-cell">May 31</td>
+          <td class="lecture-cell">Motion + Localization</td>
+          <td class="tutorial-cell">TBD</td>
+          <td class="hw-cell" rowspan="2">
+            <span class="hw-badge b4">HW 4</span>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Download assignments</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Submit</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <span class="hw-due">Due: Jun 14</span>
+          </td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+        <tr>
+          <td class="wk-num">9</td>
+          <td class="date-cell">Jun 7</td>
+          <td class="lecture-cell">Generative Models 1</td>
+          <td class="tutorial-cell">TBD</td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+
+        <!-- ═══════════ HW 5 (Wk 10–11, due Jun 28) ═══════════ -->
+        <tr>
+          <td class="wk-num">10</td>
+          <td class="date-cell">Jun 14</td>
+          <td class="lecture-cell">Generative Models 2</td>
+          <td class="tutorial-cell">TBD</td>
+          <td class="hw-cell" rowspan="2">
+            <span class="hw-badge b5">HW 5</span>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Download assignments</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied"><svg class="dl-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <div class="hw-links-group">
+              <span class="hw-links-label">Submit</span>
+              <div class="hw-links-row">
+                <a href="#" class="hw-link theory-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Theory</a>
+                <a href="#" class="hw-link scratch-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> From Scratch</a>
+                <a href="#" class="hw-link applied-up"><svg class="ul-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l4 4H9.5v6h-3V6H4L8 2z"/><path d="M14 14H2v-2h12v2z"/></svg> Applied</a>
+              </div>
+            </div>
+            <span class="hw-due">Due: Jun 28</span>
+          </td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+        <tr>
+          <td class="wk-num">11</td>
+          <td class="date-cell">Jun 21</td>
+          <td class="lecture-cell">Self-Supervision + Interp.</td>
+          <td class="tutorial-cell">TBD</td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+
+        <!-- ═══════════ WEEK 12 ═══════════ -->
+        <tr>
+          <td class="wk-num">12</td>
+          <td class="date-cell">Jun 28</td>
+          <td class="lecture-cell">Neural Rendering</td>
+          <td class="tutorial-cell">TBD</td>
+          <td style="color: var(--text-muted); font-style: italic;">
+            <a href="project.html" style="color:var(--accent); text-decoration:none;">Final project period →</a>
+          </td>
+          <td><a href="#" class="resource-link">Slides</a></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    00970202 Modern Computer Vision — <a href="https://www.technion.ac.il" target="_blank">Technion</a> — Spring 2026
+  </p>
+</footer>
+
+</body>
+</html>
