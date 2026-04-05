@@ -56,6 +56,14 @@ A system that is both is called \textbf{LTI}.
 
   \item \textbf{Support adds:}\quad $\supp(f \conv g) \;\subseteq\; \supp(f) + \supp(g)$
 
+  The \emph{support} of $f$, written $\supp(f)$, is the closure of the set where $f$ is nonzero
+  (i.e., where $f$ ``lives,'' including the boundary).
+  The $+$ between two sets is the \emph{Minkowski sum}: $A + B = \{a + b : a \in A,\; b \in B\}$.
+
+  In plain words: if $f$ lives on some interval and $g$ lives on some interval,
+  show that $f \conv g$ can only be nonzero on an interval whose length is at most
+  the sum of those two lengths.
+
   \textcolor{gray}{\small [Hint: when is the integrand nonzero?]}
 
   \item \textbf{LTI if and only if convolution:}\quad a system is LTI $\Leftrightarrow$ it can be written as convolution with some kernel $h$.
