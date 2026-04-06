@@ -1,0 +1,44 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{Modern Computer Vision} --- Technion, Spring 2026}
+\rhead{HW 2 --- Theory}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Homework 2 --- Theory}\\[6pt]
+  \textcolor{gray}{Due: May 10, 2026}
+\end{center}
+
+\vspace{12pt}
+
+\noindent
+Consider a layer in a neural network whose input is an invertible matrix $A \in \R^{n \times n}$ and whose output is $A^{-1}$.
+What is the backward of this layer $\bigl(\frac{\partial \mathcal{L}}{\partial A}\bigr)$?
+
+\medskip
+\noindent
+\textcolor{gray}{\small
+Guidance: first, express the Jacobian $\frac{\partial A^{-1}}{\partial A}$
+(think about what type of object it is).
+Then use the chain rule to obtain $\frac{\partial \mathcal{L}}{\partial A}$.
+You may work with tensor operations or with index notation (e.g.\ $A_{ij}$)---whichever you prefer.}
+
+\vfill
+\begin{center}
+{\small\textcolor{gray}{Modern Computer Vision --- Technion --- Spring 2026 --- Assaf Shocher}}
+\end{center}
+
+\end{document}
