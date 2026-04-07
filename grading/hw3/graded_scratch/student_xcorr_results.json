@@ -12,7 +12,7 @@
     "maxpool2d_layer": "FAIL: TODO: Implement MaxPool2d forward",
     "momentum_sgd": "PASS",
     "convnet_forward": "FAIL: TODO: Initialize Conv2d weights and bias",
-    "cifar_accuracy": "SKIP"
+    "cifar_accuracy": "FAIL: TODO: Initialize Conv2d weights and bias"
   },
   "timing": {},
   "source": {},

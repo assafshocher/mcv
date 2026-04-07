@@ -12,7 +12,7 @@
     "maxpool2d_layer": "PASS",
     "momentum_sgd": "PASS",
     "convnet_forward": "PASS",
-    "cifar_accuracy": "SKIP"
+    "cifar_accuracy": "PASS"
   },
   "timing": {},
   "source": {},

@@ -13,7 +13,7 @@
       "maxpool2d_layer": "FAIL: TODO: Implement MaxPool2d forward",
       "momentum_sgd": "PASS",
       "convnet_forward": "FAIL: TODO: Initialize Conv2d weights and bias",
-      "cifar_accuracy": "SKIP"
+      "cifar_accuracy": "FAIL: TODO: Initialize Conv2d weights and bias"
     },
     "timing": {},
     "source": {},
@@ -34,7 +34,7 @@
       "maxpool2d_layer": "FAIL: TODO: Implement MaxPool2d forward",
       "momentum_sgd": "FAIL: name 'MomentumSGD' is not defined",
       "convnet_forward": "FAIL: name 'ConvNet' is not defined",
-      "cifar_accuracy": "SKIP"
+      "cifar_accuracy": "FAIL: name 'ConvNet' is not defined"
     },
     "timing": {},
     "source": {},
@@ -55,7 +55,7 @@
       "maxpool2d_layer": "PASS",
       "momentum_sgd": "PASS",
       "convnet_forward": "PASS",
-      "cifar_accuracy": "SKIP"
+      "cifar_accuracy": "PASS"
     },
     "timing": {},
     "source": {},
@@ -76,7 +76,7 @@
       "maxpool2d_layer": "FAIL: TODO: Implement MaxPool2d forward",
       "momentum_sgd": "PASS",
       "convnet_forward": "FAIL: TODO: Initialize Conv2d weights and bias",
-      "cifar_accuracy": "SKIP"
+      "cifar_accuracy": "FAIL: TODO: Initialize Conv2d weights and bias"
     },
     "timing": {},
     "source": {},
