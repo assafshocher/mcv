@@ -15,7 +15,8 @@
     "sgd_step": "FAIL: ",
     "sgd_zero_grad": "FAIL: ",
     "train_epoch_runs": "FAIL: ",
-    "mnist_accuracy": "FAIL: name 'model' is not defined"
+    "mnist_accuracy": "FAIL: name 'model' is not defined",
+    "mnist_bonus": "FAIL: name 'model' is not defined"
   },
   "timing": {},
   "source": {

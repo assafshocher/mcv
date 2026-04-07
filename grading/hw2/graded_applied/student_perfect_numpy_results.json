@@ -7,8 +7,8 @@
     "predict_sum_defined": "PASS",
     "predict_sum_batch": "PASS",
     "addition_accuracy": "PASS",
-    "approach_explanation": "MANUAL",
-    "analysis": "MANUAL",
+    "model_accuracy_bonus": "PASS",
+    "addition_accuracy_bonus": "PASS",
     "bonus_convolution": "PASS"
   },
   "timing": {},

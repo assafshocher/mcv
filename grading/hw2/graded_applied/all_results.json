@@ -8,8 +8,8 @@
       "predict_sum_defined": "PASS",
       "predict_sum_batch": "PASS",
       "addition_accuracy": "PASS",
-      "approach_explanation": "MANUAL",
-      "analysis": "MANUAL",
+      "model_accuracy_bonus": "FAIL: Bonus: need >=99%, got 98.07%",
+      "addition_accuracy_bonus": "PASS",
       "bonus_convolution": "FAIL: Bonus not awarded \u2014 no probability convolution pattern detected"
     },
     "timing": {},
@@ -30,8 +30,8 @@
       "predict_sum_defined": "PASS",
       "predict_sum_batch": "PASS",
       "addition_accuracy": "PASS",
-      "approach_explanation": "MANUAL",
-      "analysis": "MANUAL",
+      "model_accuracy_bonus": "PASS",
+      "addition_accuracy_bonus": "PASS",
       "bonus_convolution": "PASS"
     },
     "timing": {},
@@ -52,8 +52,8 @@
       "predict_sum_defined": "PASS",
       "predict_sum_batch": "PASS",
       "addition_accuracy": "PASS",
-      "approach_explanation": "MANUAL",
-      "analysis": "MANUAL",
+      "model_accuracy_bonus": "PASS",
+      "addition_accuracy_bonus": "PASS",
       "bonus_convolution": "PASS"
     },
     "timing": {},
@@ -74,8 +74,8 @@
       "predict_sum_defined": "PASS",
       "predict_sum_batch": "PASS",
       "addition_accuracy": "PASS",
-      "approach_explanation": "MANUAL",
-      "analysis": "MANUAL",
+      "model_accuracy_bonus": "FAIL: Bonus: need >=99%, got 97.01%",
+      "addition_accuracy_bonus": "FAIL: Bonus: need >=95% addition accuracy, got 93.74%",
       "bonus_convolution": "PASS"
     },
     "timing": {},

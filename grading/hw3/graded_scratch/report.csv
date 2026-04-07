@@ -1,5 +1,5 @@
-student_id,file,conv2d_forward_shape,conv2d_forward_values,conv2d_backward_x,conv2d_backward_w,conv2d_backward_b,max_pool2d_forward,max_pool2d_backward,conv2d_layer,maxpool2d_layer,momentum_sgd,convnet_forward,cifar_accuracy,total_grade,bonus
-MISSING,student_perfect.ipynb,5,10,10,10,5,10,10,5,5,5,5,20,100,0
-MISSING,student_no_pool_backward.ipynb,5,10,10,10,5,10,0,0,0,5,0,0,55,0
-MISSING,student_xcorr.ipynb,5,10,10,10,5,10,0,0,0,5,0,0,55,0
-MISSING,student_partial.ipynb,5,10,0,0,0,0,0,0,0,0,0,0,15,0
+student_id,file,conv2d_forward_shape,conv2d_forward_values,conv2d_backward_x,conv2d_backward_w,conv2d_backward_b,max_pool2d_forward,max_pool2d_backward,conv2d_layer,maxpool2d_layer,momentum_sgd,convnet_forward,cifar_accuracy,cifar_accuracy_bonus,total_grade,bonus
+MISSING,student_perfect.ipynb,5,10,10,10,5,10,10,5,5,5,5,20,0,100,0
+MISSING,student_no_pool_backward.ipynb,5,10,10,10,5,10,0,0,0,5,0,0,0,55,0
+MISSING,student_xcorr.ipynb,5,10,10,10,5,10,0,0,0,5,0,0,0,55,0
+MISSING,student_partial.ipynb,5,10,0,0,0,0,0,0,0,0,0,0,0,15,0

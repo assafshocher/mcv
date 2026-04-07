@@ -25,7 +25,7 @@
       "carve_real_image": "FAIL: Real image carve differs from reference: max diff 0.992157"
     },
     "timing": {
-      "carve_10_seams_50x80": 5.7
+      "carve_10_seams_50x80": 6.2
     },
     "source": {
       "compute_energy": "def compute_energy(gray):\n    H, W = gray.shape\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    e = gx.abs() + gy.abs()\n    return F.pad(e.unsqueeze(0), (1, 1, 1, 1), mode='replicate').squeeze(0)\n",
@@ -66,7 +66,7 @@
       "carve_real_image": "FAIL: Real image carve differs from reference: max diff 1.000000"
     },
     "timing": {
-      "carve_10_seams_50x80": 35.1
+      "carve_10_seams_50x80": 36.6
     },
     "source": {
       "compute_energy": "def compute_energy(gray):\n    H, W = gray.shape\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    e = gx + gy  # forgot absolute values!\n    return F.pad(e.unsqueeze(0), (1, 1, 1, 1), mode='replicate').squeeze(0)\n",
@@ -186,7 +186,7 @@
       "carve_real_image": "PASS"
     },
     "timing": {
-      "carve_10_seams_50x80": 36.3
+      "carve_10_seams_50x80": 36.7
     },
     "source": {
       "compute_energy": "def compute_energy(gray):\n    H, W = gray.shape\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    e = gx.abs() + gy.abs()\n    return F.pad(e.unsqueeze(0), (1, 1, 1, 1), mode='replicate').squeeze(0)\n",

@@ -385,6 +385,31 @@ def grade_notebook(nb_path: Path, spec: dict, output_dir: Path,
         test_code = build_test_code_array(spec)
 
     test_cell = nbformat.v4.new_code_cell(source=test_code)
+
+    # If definitions_only mode: keep only code cells that define classes/functions/imports
+    # This avoids running slow training cells — useful for ZSSR, MNIST training, etc.
+    if spec.get("definitions_only", False):
+        import re
+        def is_definition_cell(cell):
+            if cell.cell_type != 'code':
+                return False  # skip markdown in definitions_only mode
+            src = cell.source.strip()
+            if not src:
+                return False
+            # Keep cells that define functions or classes
+            if re.search(r'^(def |class )', src, re.MULTILINE):
+                return True
+            # Keep cells that are primarily imports/setup
+            lines = [l.strip() for l in src.split('\n') if l.strip() and not l.strip().startswith('#')]
+            if not lines:
+                return False
+            setup_prefixes = ('import ', 'from ', '%', 'device', 'torch.manual_seed',
+                              'np.random.seed', 'STUDENT_ID', 'warnings', 'print(f"Using')
+            if all(any(l.startswith(p) for p in setup_prefixes) for l in lines):
+                return True
+            return False
+        nb.cells = [c for c in nb.cells if is_definition_cell(c)]
+
     nb.cells.append(test_cell)
 
     # Execute in a temp working directory
@@ -408,19 +433,25 @@ def grade_notebook(nb_path: Path, spec: dict, output_dir: Path,
 
     ep = ExecutePreprocessor(
         timeout=timeout, kernel_name="python3",
-        allow_errors=True
+        allow_errors=True,
+        interrupt_on_timeout=True
     )
     result_path = work_dir / "__grading_result__.json"
 
     try:
         ep.preprocess(nb, {"metadata": {"path": str(work_dir)}})
-    except CellExecutionError:
-        pass
+    except CellExecutionError as ce:
+        import sys
+        print(f"\n    [DEBUG CellExec] {ce}", file=sys.stderr)
     except Exception as e:
-        print("EXEC ERROR")
-        return {"student_id": backup_id, "file": nb_path.name,
-                "tests": {}, "timing": {}, "source": {},
-                "error": str(e)}
+        import sys
+        print(f"\n    [DEBUG] {type(e).__name__}: {e}", file=sys.stderr)
+        # Kernel crash, timeout, etc. — try to salvage results
+        if not result_path.exists():
+            print(f"EXEC ERROR ({type(e).__name__})")
+            return {"student_id": backup_id, "file": nb_path.name,
+                    "tests": {}, "timing": {}, "source": {},
+                    "error": f"Kernel crashed: {type(e).__name__}: {e}"}
 
     # Read results
     if result_path.exists():

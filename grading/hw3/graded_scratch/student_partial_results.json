@@ -12,7 +12,8 @@
     "maxpool2d_layer": "FAIL: TODO: Implement MaxPool2d forward",
     "momentum_sgd": "FAIL: name 'MomentumSGD' is not defined",
     "convnet_forward": "FAIL: name 'ConvNet' is not defined",
-    "cifar_accuracy": "FAIL: name 'ConvNet' is not defined"
+    "cifar_accuracy": "FAIL: name 'ConvNet' is not defined",
+    "cifar_accuracy_bonus": "FAIL: name '_acc' is not defined"
   },
   "timing": {},
   "source": {},

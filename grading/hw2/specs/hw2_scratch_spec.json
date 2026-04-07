@@ -94,9 +94,16 @@
       "name": "mnist_accuracy",
       "function": "MLP",
       "points": 15,
-      "code": "# Check that model was trained and achieves reasonable accuracy\nacc = evaluate(model, test_loader)\nassert acc > 0.95, f'MLP accuracy {acc:.2%} is below 95%'\nprint(f'MLP test accuracy: {acc:.2%}')",
+      "code": "# Check that model was trained and achieves reasonable accuracy\nacc = evaluate(model, test_loader)\nassert acc > 0.85, f'MLP accuracy {acc:.2%} is below 85%'\nprint(f'MLP test accuracy: {acc:.2%}')",
       "visual_test": true,
       "visual_name": "__vis_accuracy__"
+    },
+    {
+      "name": "mnist_bonus",
+      "function": "MLP",
+      "points": 10,
+      "bonus": true,
+      "code": "# Bonus for high accuracy\nacc = evaluate(model, test_loader)\nassert acc > 0.97, f'Bonus requires >97%, got {acc:.2%}'\nprint(f'BONUS: MLP accuracy {acc:.2%} exceeds 97%!')"
     }
   ]
 }

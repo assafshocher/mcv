@@ -12,7 +12,8 @@
     "maxpool2d_layer": "PASS",
     "momentum_sgd": "PASS",
     "convnet_forward": "PASS",
-    "cifar_accuracy": "PASS"
+    "cifar_accuracy": "PASS",
+    "cifar_accuracy_bonus": "FAIL: Bonus: need >=45% on mini-test, got 34.80%"
   },
   "timing": {},
   "source": {},

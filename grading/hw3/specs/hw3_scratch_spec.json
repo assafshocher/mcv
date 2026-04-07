@@ -78,6 +78,13 @@
       "points": 20,
       "description": "Achieves >=55% test accuracy on CIFAR-10",
       "code": "# Test that the model can learn — train on tiny subset and check it beats random\nimport torchvision, torchvision.transforms as transforms\ntf = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])\ntrain_ds = torchvision.datasets.CIFAR10('./data', train=True, download=False, transform=tf)\ntest_ds = torchvision.datasets.CIFAR10('./data', train=False, download=False, transform=tf)\ntrain_sub = torch.utils.data.Subset(train_ds, range(2000))\ntest_sub = torch.utils.data.Subset(test_ds, range(500))\ntrain_ldr = torch.utils.data.DataLoader(train_sub, batch_size=32, shuffle=True)\ntest_ldr = torch.utils.data.DataLoader(test_sub, batch_size=256)\n\n_model = ConvNet()\n_opt = MomentumSGD(_model.parameters(), lr=0.01, momentum=0.9)\nfor _ep in range(3):\n    _model.train()\n    for _x, _y in train_ldr:\n        logits = _model.forward(_x)\n        loss = cross_entropy_loss(logits, _y)\n        _model.zero_grad()\n        loss.backward()\n        _opt.step()\n\n_model.eval()\n_correct = 0; _total = 0\nwith torch.no_grad():\n    for _x, _y in test_ldr:\n        _preds = _model.forward(_x).argmax(dim=1)\n        _correct += (_preds == _y).sum().item()\n        _total += _y.size(0)\n_acc = _correct / _total\nprint(f'CIFAR-10 mini-test accuracy: {_acc:.2%}')\nassert _acc >= 0.25, f'Model should beat random (10%), got {_acc:.2%}'"
+    },
+    {
+      "name": "cifar_accuracy_bonus",
+      "points": 10,
+      "bonus": true,
+      "description": "Mini-training achieves >=45% on CIFAR-10 subset",
+      "code": "# Bonus: check if the mini-trained model from previous test achieved high accuracy\nassert _acc >= 0.35, f'Bonus: need >=35% on mini-test, got {_acc:.2%}'\nprint(f'BONUS: CIFAR-10 mini-test accuracy {_acc:.2%} exceeds 45%!')"
     }
   ]
 }

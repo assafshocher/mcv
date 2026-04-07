@@ -3,113 +3,66 @@
   "description": "Grading spec for HW3 applied ZSSR implementation",
   "total_points": 100,
   "bonus_points": 15,
-  "timeout_seconds": 600,
+  "timeout_seconds": 900,
   "requires_gpu": false,
-  "requires_data": false,
-  "grading_mode": "code_analysis",
+  "requires_data": true,
+  "definitions_only": true,
+  "setup_code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.data import Dataset, DataLoader\nimport numpy as np\nimport os\n\n# Load grading test image (symlinked via --data-dir)\n_test_img = torch.load(os.path.join('data', 'zssr_test_image.pt'), weights_only=True)\n# Use full 256x256 image (cameraman is 512x512, use center 256x256)\n_h, _w = _test_img.shape\n_ch, _cw = _h // 2, _w // 2\n_test_img = _test_img[_ch-128:_ch+128, _cw-128:_cw+128]\nprint(f'Grading test image: {_test_img.shape}, range [{_test_img.min():.2f}, {_test_img.max():.2f}]')",
   "tests": [
     {
       "name": "model_defined",
       "points": 5,
-      "description": "ZSSRNet class exists and is a nn.Module",
-      "check": "class_exists",
-      "target": "ZSSRNet",
-      "base_class": "nn.Module"
+      "description": "ZSSRNet is defined and is an nn.Module",
+      "code": "model = ZSSRNet()\nassert isinstance(model, nn.Module), 'ZSSRNet must be an nn.Module'\nprint(f'ZSSRNet params: {sum(p.numel() for p in model.parameters()):,}')\nprint('model_defined: PASSED')"
     },
     {
       "name": "model_output_shape",
-      "points": 10,
-      "description": "Forward output has correct spatial dims (scale_factor * input)",
-      "check": "method_exists",
-      "target": "ZSSRNet",
-      "method": "forward"
+      "points": 15,
+      "description": "ZSSRNet forward produces correct output spatial size",
+      "code": "model = ZSSRNet()\nx = torch.randn(1, 1, 32, 32)\ny = model(x, scale_factor=2)\nif y.dim() == 3:\n    y = y.unsqueeze(0)\nassert y.shape[-2] == 64 and y.shape[-1] == 64, f'Expected (..., 64, 64), got {y.shape}'\nprint('model_output_shape: PASSED')"
     },
     {
       "name": "dataset_defined",
-      "points": 5,
-      "description": "ZSSRDataset class exists and returns dict with HR/LR keys",
-      "check": "class_exists",
-      "target": "ZSSRDataset",
-      "base_class": "Dataset"
+      "points": 10,
+      "description": "ZSSRDataset is defined and returns HR/LR pairs",
+      "code": "ds = ZSSRDataset(_test_img, scale_factor=2, crop_size=32, n_samples=4)\nassert isinstance(ds, Dataset), 'ZSSRDataset must be a torch Dataset'\nsample = ds[0]\nassert isinstance(sample, dict), f'__getitem__ should return a dict, got {type(sample)}'\nassert 'HR' in sample and 'LR' in sample, f'Dict must have HR and LR keys, got {list(sample.keys())}'\nprint('dataset_defined: PASSED')"
     },
     {
       "name": "dataset_shapes",
       "points": 5,
-      "description": "Dataset __getitem__ returns dict with correct HR/LR shapes",
-      "check": "method_exists",
-      "target": "ZSSRDataset",
-      "method": "__getitem__"
+      "description": "HR and LR crops have correct shapes",
+      "code": "ds = ZSSRDataset(_test_img, scale_factor=2, crop_size=32, n_samples=4)\nsample = ds[0]\nhr, lr = sample['HR'], sample['LR']\n# HR spatial should be 2x LR spatial\nhr_h, hr_w = hr.shape[-2], hr.shape[-1]\nlr_h, lr_w = lr.shape[-2], lr.shape[-1]\nassert hr_h == 2 * lr_h, f'HR height {hr_h} should be 2x LR height {lr_h}'\nassert hr_w == 2 * lr_w, f'HR width {hr_w} should be 2x LR width {lr_w}'\nprint(f'HR: {hr.shape}, LR: {lr.shape}')\nprint('dataset_shapes: PASSED')"
     },
     {
-      "name": "train_function",
-      "points": 5,
-      "description": "train_zssr function is defined",
-      "check": "function_exists",
-      "target": "train_zssr"
+      "name": "train_runs",
+      "points": 15,
+      "description": "train_zssr runs without error and returns loss/psnr history",
+      "code": "model = ZSSRNet()\nds = ZSSRDataset(_test_img, scale_factor=2, crop_size=32, n_samples=8)\ndl = DataLoader(ds, batch_size=2, shuffle=True)\nmodel, loss_hist, psnr_hist = train_zssr(model, dl, scale_factor=2, num_epochs=3, learning_rate=0.001, device='cpu', verbose=False)\nassert isinstance(loss_hist, list) and len(loss_hist) == 3, f'Expected 3 loss entries, got {len(loss_hist)}'\nassert isinstance(psnr_hist, list) and len(psnr_hist) == 3, f'Expected 3 psnr entries, got {len(psnr_hist)}'\nprint('train_runs: PASSED')"
     },
     {
       "name": "psnr_improves",
-      "points": 20,
-      "description": "After training, PSNR > bicubic baseline (code inspection)",
-      "check": "code_contains",
-      "patterns": [
-        "criterion",
-        "backward",
-        "optimizer.step",
-        "loss_history",
-        "psnr_history"
-      ]
+      "points": 25,
+      "description": "After training, ZSSR PSNR exceeds bicubic baseline",
+      "code": "import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\n\n# Train on the grading test image\n_model = ZSSRNet()\n_ds = ZSSRDataset(_test_img, scale_factor=2, crop_size=64, n_samples=200)\n_dl = DataLoader(_ds, batch_size=4, shuffle=True)\n_model, _loss_h, _psnr_h = train_zssr(_model, _dl, scale_factor=2, num_epochs=100, learning_rate=0.001, device='cpu', verbose=True)\n\n# Evaluate\n_eval = evaluate_zssr(_model, _test_img, scale_factor=2, device='cpu')\n_psnr_bic = _eval['PSNR_Bicubic']\n_psnr_zssr = _eval['PSNR_ZSSR']\nprint(f'Bicubic PSNR: {_psnr_bic:.2f} dB')\nprint(f'ZSSR PSNR:    {_psnr_zssr:.2f} dB')\nprint(f'Improvement:  {_psnr_zssr - _psnr_bic:.2f} dB')\nassert _psnr_zssr > _psnr_bic, f'ZSSR ({_psnr_zssr:.2f}) must beat bicubic ({_psnr_bic:.2f})'\n\n# Show result in graded notebook\nfig, axes = plt.subplots(1, 4, figsize=(16, 4))\nfor ax, (key, title) in zip(axes, [\n    ('HR', 'Ground Truth'),\n    ('LR', 'Low-Res Input'),\n    ('Bicubic', f\"Bicubic {_psnr_bic:.2f}dB\"),\n    ('ZSSR', f\"ZSSR {_psnr_zssr:.2f}dB\")]):\n    img = _eval[key]\n    if isinstance(img, torch.Tensor): img = img.detach().cpu().numpy()\n    while img.ndim > 2: img = img.squeeze(0)\n    ax.imshow(img, cmap='gray', vmin=0, vmax=1)\n    ax.set_title(title, fontsize=14)\n    ax.axis('off')\nplt.suptitle(f'ZSSR Grading Result (+{_psnr_zssr - _psnr_bic:.2f} dB over bicubic)', fontsize=16)\nplt.tight_layout()\nplt.show()\nprint('psnr_improves: PASSED')"
     },
     {
-      "name": "evaluation_function",
-      "points": 5,
-      "description": "evaluate_zssr function is defined",
-      "check": "function_exists",
-      "target": "evaluate_zssr"
-    },
-    {
-      "name": "analysis",
+      "name": "evaluate_function",
       "points": 10,
-      "type": "manual",
-      "description": "Written analysis of ZSSR performance vs bicubic"
-    },
-    {
-      "name": "understanding",
-      "points": 10,
-      "type": "manual",
-      "description": "Explanation of patch recurrence concept in ZSSR"
+      "description": "evaluate_zssr returns dict with expected keys and PSNR values",
+      "code": "model = ZSSRNet()\nresults = evaluate_zssr(model, _test_img, scale_factor=2, device='cpu')\nassert isinstance(results, dict), f'evaluate_zssr must return a dict'\nfor key in ['HR', 'LR', 'Bicubic', 'ZSSR', 'PSNR_Bicubic', 'PSNR_ZSSR']:\n    assert key in results, f'Missing key: {key}'\nassert isinstance(results['PSNR_Bicubic'], (float, int, np.floating)), 'PSNR_Bicubic must be numeric'\nassert isinstance(results['PSNR_ZSSR'], (float, int, np.floating)), 'PSNR_ZSSR must be numeric'\nprint('evaluate_function: PASSED')"
     },
     {
       "name": "visualization",
-      "points": 10,
-      "description": "Training curves and comparison images visualized",
-      "check": "code_contains",
-      "patterns": [
-        "matplotlib",
-        "imshow"
-      ]
+      "points": 15,
+      "description": "Visualization functions are defined and callable",
+      "code": "assert callable(plot_training_curves), 'plot_training_curves must be defined'\nassert callable(visualize_results), 'visualize_results must be defined'\nprint('visualization: PASSED')"
     },
     {
       "name": "augmentation_bonus",
       "points": 15,
       "bonus": true,
       "description": "ensemble_predict_zssr implemented and improves PSNR",
-      "check": "function_exists",
-      "target": "ensemble_predict_zssr"
+      "code": "assert callable(ensemble_predict_zssr), 'ensemble_predict_zssr must be defined'\n# Test it actually runs\n_lr = F.interpolate(_test_img.unsqueeze(0).unsqueeze(0), scale_factor=0.5, mode='bicubic', align_corners=False).squeeze()\n_sr = ensemble_predict_zssr(_model, _lr, scale_factor=2, device='cpu')\nassert _sr is not None, 'ensemble_predict_zssr must return a result'\nprint('augmentation_bonus: PASSED')"
     }
-  ],
-  "rubric": {
-    "analysis": {
-      "excellent": "Clear explanation of ZSSR advantages over bicubic, quantified improvements, discussion of limitations",
-      "good": "Good explanation of improvements, mostly quantified",
-      "acceptable": "Basic explanation of ZSSR approach",
-      "poor": "Minimal or unclear analysis"
-    },
-    "understanding": {
-      "excellent": "Deep explanation of patch recurrence, connection to image statistics, mentions internal vs external patches",
-      "good": "Clear explanation of how recurrence helps training",
-      "acceptable": "Basic understanding demonstrated",
-      "poor": "Incomplete or unclear"
-    }
-  }
+  ]
 }

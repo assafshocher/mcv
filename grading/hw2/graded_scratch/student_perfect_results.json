@@ -15,7 +15,8 @@
     "sgd_step": "PASS",
     "sgd_zero_grad": "PASS",
     "train_epoch_runs": "PASS",
-    "mnist_accuracy": "PASS"
+    "mnist_accuracy": "PASS",
+    "mnist_bonus": "FAIL: Bonus requires >97%, got 96.65%"
   },
   "timing": {},
   "source": {
