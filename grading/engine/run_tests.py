@@ -472,6 +472,16 @@ def grade_notebook(nb_path: Path, spec: dict, output_dir: Path,
             shutil.copy2(str(vis_path), str(dest))
             results["visual_files"][vt["name"]] = str(dest)
 
+    # Extract image outputs from the test cell (last code cell in executed nb)
+    results["test_cell_images"] = []
+    test_cell_node = nb.cells[-1] if nb.cells else None
+    if test_cell_node and test_cell_node.cell_type == 'code':
+        for out in test_cell_node.get('outputs', []):
+            if out.get('output_type') in ('display_data', 'execute_result'):
+                data = out.get('data', {})
+                if 'image/png' in data:
+                    results["test_cell_images"].append(data['image/png'])
+
     results["file"] = nb_path.name
     if not results.get("student_id") or results["student_id"] == "MISSING":
         results["student_id"] = backup_id
@@ -625,6 +635,21 @@ def build_graded_notebook(nb_path: Path, results: dict, spec: dict, grades_row: 
 
     header_lines.extend(["", "---"])
     cells.append(nbformat.v4.new_markdown_cell("\n".join(header_lines)))
+
+    # Include test cell images (e.g., ZSSR comparison) right after the grade table
+    test_images = results.get("test_cell_images", [])
+    if test_images:
+        img_cell = nbformat.v4.new_code_cell(source="# Grading test results (auto-generated)")
+        img_cell.outputs = []
+        for img_b64 in test_images:
+            img_cell.outputs.append(nbformat.v4.new_output(
+                output_type='display_data',
+                data={'image/png': img_b64, 'text/plain': ['<grading result image>']},
+                metadata={'image/png': {'width': 800}}
+            ))
+        # Mark cell as already executed so Jupyter doesn't show [*]
+        img_cell.execution_count = None
+        cells.append(img_cell)
 
     # Per-test detail cells for failures
     for test_info in _iter_tests(spec):
