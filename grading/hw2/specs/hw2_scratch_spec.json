@@ -1,0 +1,102 @@
+{
+  "notebook": "from_scratch.ipynb",
+  "timeout": 300,
+  "setup_code": "import torch\nimport torch.nn.functional as F",
+  "test_files": [],
+  "tests": [
+    {
+      "name": "linear_forward",
+      "function": "linear",
+      "points": 5,
+      "code": "torch.manual_seed(0)\nx=torch.randn(4,3); w=torch.randn(2,3); b=torch.randn(2)\ny=linear(x, w, b)\ny_ref = x @ w.T + b\nassert torch.allclose(y, y_ref, atol=1e-5), f'linear forward mismatch: max diff {(y-y_ref).abs().max():.6f}'"
+    },
+    {
+      "name": "linear_backward_x",
+      "function": "linear",
+      "points": 5,
+      "code": "torch.manual_seed(1)\nx_pt=torch.randn(4,3,requires_grad=True); w_pt=torch.randn(2,3,requires_grad=True); b_pt=torch.randn(2,requires_grad=True)\n(x_pt @ w_pt.T + b_pt).mean().backward()\nx_o=x_pt.detach().clone(); w_o=w_pt.detach().clone(); b_o=b_pt.detach().clone()\nctx=[]; y=linear(x_o,w_o,b_o,ctx=ctx); l=mean(y,ctx=ctx); backward(l,ctx)\nassert torch.allclose(x_o.grad, x_pt.grad, atol=1e-5), f'x.grad mismatch'"
+    },
+    {
+      "name": "linear_backward_w",
+      "function": "linear",
+      "points": 5,
+      "code": "torch.manual_seed(1)\nx_pt=torch.randn(4,3,requires_grad=True); w_pt=torch.randn(2,3,requires_grad=True); b_pt=torch.randn(2,requires_grad=True)\n(x_pt @ w_pt.T + b_pt).mean().backward()\nx_o=x_pt.detach().clone(); w_o=w_pt.detach().clone(); b_o=b_pt.detach().clone()\nctx=[]; y=linear(x_o,w_o,b_o,ctx=ctx); l=mean(y,ctx=ctx); backward(l,ctx)\nassert torch.allclose(w_o.grad, w_pt.grad, atol=1e-5), f'w.grad mismatch'"
+    },
+    {
+      "name": "linear_backward_b",
+      "function": "linear",
+      "points": 5,
+      "code": "torch.manual_seed(1)\nx_pt=torch.randn(4,3,requires_grad=True); w_pt=torch.randn(2,3,requires_grad=True); b_pt=torch.randn(2,requires_grad=True)\n(x_pt @ w_pt.T + b_pt).mean().backward()\nx_o=x_pt.detach().clone(); w_o=w_pt.detach().clone(); b_o=b_pt.detach().clone()\nctx=[]; y=linear(x_o,w_o,b_o,ctx=ctx); l=mean(y,ctx=ctx); backward(l,ctx)\nassert torch.allclose(b_o.grad, b_pt.grad, atol=1e-5), f'b.grad mismatch'"
+    },
+    {
+      "name": "relu_forward",
+      "function": "relu",
+      "points": 5,
+      "code": "x=torch.tensor([-2.,-1.,0.,1.,2.])\ny=relu(x.clone())\nassert torch.allclose(y, torch.tensor([0.,0.,0.,1.,2.])), f'relu forward: {y}'"
+    },
+    {
+      "name": "relu_backward",
+      "function": "relu",
+      "points": 10,
+      "code": "torch.manual_seed(2)\nx_pt=torch.randn(3,4,requires_grad=True)\ntorch.relu(x_pt).mean().backward()\nx_o=x_pt.detach().clone(); ctx=[]; y=relu(x_o,ctx=ctx); l=mean(y,ctx=ctx); backward(l,ctx)\nassert torch.allclose(x_o.grad, x_pt.grad, atol=1e-5), f'relu backward mismatch'"
+    },
+    {
+      "name": "ce_forward",
+      "function": "cross_entropy_loss",
+      "points": 10,
+      "code": "torch.manual_seed(3)\nz=torch.randn(8,5); t=torch.randint(0,5,(8,))\nloss_pt = F.cross_entropy(z, t)\nloss_o = cross_entropy_loss(z.clone(), t)\nassert torch.allclose(loss_o, loss_pt, atol=1e-4), f'CE loss mismatch: {loss_o.item():.6f} vs {loss_pt.item():.6f}'"
+    },
+    {
+      "name": "ce_backward",
+      "function": "cross_entropy_loss",
+      "points": 10,
+      "code": "torch.manual_seed(3)\nz_pt=torch.randn(8,5,requires_grad=True); t=torch.randint(0,5,(8,))\nF.cross_entropy(z_pt, t).backward()\nz_o=z_pt.detach().clone(); ctx=[]; loss=cross_entropy_loss(z_o,t,ctx=ctx); backward(loss,ctx)\nassert torch.allclose(z_o.grad, z_pt.grad, atol=1e-4), f'CE backward mismatch: max diff {(z_o.grad-z_pt.grad).abs().max():.6f}'"
+    },
+    {
+      "name": "linear_layer",
+      "function": "Linear",
+      "points": 5,
+      "code": "layer=Linear(10,5)\nassert layer.weight.shape==(5,10), f'weight shape {layer.weight.shape}'\nassert layer.bias.shape==(5,), f'bias shape {layer.bias.shape}'\nassert len(layer.parameters())==2\nctx=[]; y=layer(torch.randn(3,10),ctx=ctx)\nassert y.shape==(3,5), f'output shape {y.shape}'\nassert len(ctx)==1, f'ctx length {len(ctx)}'"
+    },
+    {
+      "name": "softmax_classifier",
+      "function": "SoftmaxClassifier",
+      "points": 5,
+      "code": "m=SoftmaxClassifier(784,10)\ny=m(torch.randn(4,784))\nassert y.shape==(4,10), f'output shape {y.shape}'"
+    },
+    {
+      "name": "mlp_model",
+      "function": "MLP",
+      "points": 5,
+      "code": "m=MLP(784,128,10)\ny=m(torch.randn(4,784))\nassert y.shape==(4,10), f'output shape {y.shape}'\nassert sum(p.numel() for p in m.parameters()) > 784*10, 'MLP should have more params than linear'"
+    },
+    {
+      "name": "sgd_step",
+      "function": "SGD",
+      "points": 5,
+      "code": "p=torch.tensor([1.,2.,3.]); p.grad=torch.tensor([0.1,0.2,0.3])\nopt=SGD([p],lr=1.0); opt.step()\nassert torch.allclose(p, torch.tensor([0.9,1.8,2.7])), f'after step: {p}'"
+    },
+    {
+      "name": "sgd_zero_grad",
+      "function": "SGD",
+      "points": 5,
+      "code": "p=torch.tensor([1.,2.]); p.grad=torch.tensor([0.5,0.5])\nopt=SGD([p],lr=0.1); opt.zero_grad()\nassert p.grad is None or (p.grad==0).all(), f'after zero_grad: {p.grad}'"
+    },
+    {
+      "name": "train_epoch_runs",
+      "function": "train_epoch",
+      "points": 5,
+      "code": "m=MLP(784,128,10); opt=SGD(m.parameters(),lr=0.1)\nimport torchvision, torchvision.transforms as T\ntf=T.Compose([T.ToTensor(),T.Normalize((0.1307,),(0.3081,))])\ntd=torchvision.datasets.MNIST('./data',train=True,download=True,transform=tf)\nsmall=torch.utils.data.Subset(td, range(512))\nloader=torch.utils.data.DataLoader(small,batch_size=128)\nloss=train_epoch(m, opt, loader)\nassert isinstance(loss, float), f'train_epoch should return float loss, got {type(loss)}'\nassert loss < 5.0, f'loss too high after 1 epoch: {loss}'",
+      "visual_test": true,
+      "visual_name": "__vis_train_epoch__"
+    },
+    {
+      "name": "mnist_accuracy",
+      "function": "MLP",
+      "points": 15,
+      "code": "# Check that model was trained and achieves reasonable accuracy\nacc = evaluate(model, test_loader)\nassert acc > 0.95, f'MLP accuracy {acc:.2%} is below 95%'\nprint(f'MLP test accuracy: {acc:.2%}')",
+      "visual_test": true,
+      "visual_name": "__vis_accuracy__"
+    }
+  ]
+}

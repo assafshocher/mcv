@@ -1,0 +1,39 @@
+{
+  "student_id": "PARTIAL_105",
+  "tests": {
+    "energy_shape": "PASS",
+    "energy_nonneg": "PASS",
+    "energy_correctness": "PASS",
+    "energy_uniform": "PASS",
+    "energy_toy_image": "PASS",
+    "energy_real_image": "PASS",
+    "seam_shape": "FAIL: ",
+    "seam_connected": "FAIL: ",
+    "seam_bounds": "FAIL: ",
+    "seam_optimal": "FAIL: ",
+    "seam_trivial": "FAIL: ",
+    "seam_toy_image": "FAIL: ",
+    "seam_real_image": "FAIL: ",
+    "remove_shape_rgb": "FAIL: ",
+    "remove_shape_gray": "FAIL: ",
+    "remove_correctness": "FAIL: ",
+    "remove_real_image": "FAIL: ",
+    "carve_shape": "FAIL: ",
+    "carve_correctness_small": "FAIL: ",
+    "carve_preserves_range": "FAIL: ",
+    "carve_real_image": "FAIL: "
+  },
+  "timing": {
+    "carve_10_seams_50x80": "FAIL: "
+  },
+  "source": {
+    "compute_energy": "def compute_energy(gray):\n    H, W = gray.shape\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    e = gx.abs() + gy.abs()\n    return F.pad(e.unsqueeze(0), (1, 1, 1, 1), mode='replicate').squeeze(0)\n",
+    "find_seam": "def find_seam(energy):\n    raise NotImplementedError\n",
+    "remove_seam": "def remove_seam(img, seam):\n    raise NotImplementedError\n",
+    "seam_carve": "def seam_carve(img, n_seams, show_progress=True):\n    raise NotImplementedError\n"
+  },
+  "visual_files": {
+    "vis_energy": "grading/hw1/graded_applied/student_partial_vis_energy.png"
+  },
+  "file": "student_partial.ipynb"
+}

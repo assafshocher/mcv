@@ -1,0 +1,90 @@
+[
+  {
+    "student_id": "ARGMAX_213",
+    "tests": {
+      "model_defined": "PASS",
+      "model_accuracy": "PASS",
+      "training_curves": "PASS",
+      "predict_sum_defined": "PASS",
+      "predict_sum_batch": "PASS",
+      "addition_accuracy": "PASS",
+      "approach_explanation": "MANUAL",
+      "analysis": "MANUAL",
+      "bonus_convolution": "FAIL: Bonus not awarded \u2014 no probability convolution pattern detected"
+    },
+    "timing": {},
+    "source": {
+      "model": "NOT_FOUND",
+      "train_losses": "NOT_FOUND",
+      "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Simple argmax approach: predict each digit, add them.\"\"\"\n    model.eval()\n    with torch.no_grad():\n        pred1 = model(img1).argmax(dim=1)\n        pred2 = model(img2).argmax(dim=1)\n    return (pred1 + pred2).cpu()\n"
+    },
+    "visual_files": {},
+    "file": "student_argmax_only.ipynb"
+  },
+  {
+    "student_id": "PERFECT_211",
+    "tests": {
+      "model_defined": "PASS",
+      "model_accuracy": "PASS",
+      "training_curves": "PASS",
+      "predict_sum_defined": "PASS",
+      "predict_sum_batch": "PASS",
+      "addition_accuracy": "PASS",
+      "approach_explanation": "MANUAL",
+      "analysis": "MANUAL",
+      "bonus_convolution": "PASS"
+    },
+    "timing": {},
+    "source": {
+      "model": "NOT_FOUND",
+      "train_losses": "NOT_FOUND",
+      "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Use probability convolution: P(A+B=k) = sum_i P(A=i)*P(B=k-i).\"\"\"\n    model.eval()\n    with torch.no_grad():\n        logits1 = model(img1)\n        logits2 = model(img2)\n        p1 = torch.softmax(logits1, dim=1).cpu()  # (B, 10)\n        p2 = torch.softmax(logits2, dim=1).cpu()  # (B, 10)\n\n    B = p1.shape[0]\n    # Convolve each pair of distributions\n    p_sum = torch.zeros(B, 19)\n    for i in range(10):\n        for j in range(10):\n            p_sum[:, i + j] += p1[:, i] * p2[:, j]\n\n    return p_sum.argmax(dim=1)\n"
+    },
+    "visual_files": {},
+    "file": "student_perfect_conv.ipynb"
+  },
+  {
+    "student_id": "NUMPY_212",
+    "tests": {
+      "model_defined": "PASS",
+      "model_accuracy": "PASS",
+      "training_curves": "PASS",
+      "predict_sum_defined": "PASS",
+      "predict_sum_batch": "PASS",
+      "addition_accuracy": "PASS",
+      "approach_explanation": "MANUAL",
+      "analysis": "MANUAL",
+      "bonus_convolution": "PASS"
+    },
+    "timing": {},
+    "source": {
+      "model": "NOT_FOUND",
+      "train_losses": "NOT_FOUND",
+      "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Use numpy convolve for the probability combination.\"\"\"\n    model.eval()\n    with torch.no_grad():\n        p1 = torch.softmax(model(img1), dim=1).cpu().numpy()\n        p2 = torch.softmax(model(img2), dim=1).cpu().numpy()\n\n    B = p1.shape[0]\n    preds = []\n    for b in range(B):\n        p_sum = np.convolve(p1[b], p2[b])  # length 19\n        preds.append(np.argmax(p_sum))\n    return torch.tensor(preds)\n"
+    },
+    "visual_files": {},
+    "file": "student_perfect_numpy.ipynb"
+  },
+  {
+    "student_id": "UNDER_214",
+    "tests": {
+      "model_defined": "PASS",
+      "model_accuracy": "PASS",
+      "training_curves": "PASS",
+      "predict_sum_defined": "PASS",
+      "predict_sum_batch": "PASS",
+      "addition_accuracy": "PASS",
+      "approach_explanation": "MANUAL",
+      "analysis": "MANUAL",
+      "bonus_convolution": "PASS"
+    },
+    "timing": {},
+    "source": {
+      "model": "NOT_FOUND",
+      "train_losses": "NOT_FOUND",
+      "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Use probability convolution: P(A+B=k) = sum_i P(A=i)*P(B=k-i).\"\"\"\n    model.eval()\n    with torch.no_grad():\n        logits1 = model(img1)\n        logits2 = model(img2)\n        p1 = torch.softmax(logits1, dim=1).cpu()  # (B, 10)\n        p2 = torch.softmax(logits2, dim=1).cpu()  # (B, 10)\n\n    B = p1.shape[0]\n    # Convolve each pair of distributions\n    p_sum = torch.zeros(B, 19)\n    for i in range(10):\n        for j in range(10):\n            p_sum[:, i + j] += p1[:, i] * p2[:, j]\n\n    return p_sum.argmax(dim=1)\n"
+    },
+    "visual_files": {},
+    "file": "student_undertrained.ipynb"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "student_id": "PERFECT_211",
+  "tests": {
+    "model_defined": "PASS",
+    "model_accuracy": "PASS",
+    "training_curves": "PASS",
+    "predict_sum_defined": "PASS",
+    "predict_sum_batch": "PASS",
+    "addition_accuracy": "PASS",
+    "approach_explanation": "MANUAL",
+    "analysis": "MANUAL",
+    "bonus_convolution": "PASS"
+  },
+  "timing": {},
+  "source": {
+    "model": "NOT_FOUND",
+    "train_losses": "NOT_FOUND",
+    "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Use probability convolution: P(A+B=k) = sum_i P(A=i)*P(B=k-i).\"\"\"\n    model.eval()\n    with torch.no_grad():\n        logits1 = model(img1)\n        logits2 = model(img2)\n        p1 = torch.softmax(logits1, dim=1).cpu()  # (B, 10)\n        p2 = torch.softmax(logits2, dim=1).cpu()  # (B, 10)\n\n    B = p1.shape[0]\n    # Convolve each pair of distributions\n    p_sum = torch.zeros(B, 19)\n    for i in range(10):\n        for j in range(10):\n            p_sum[:, i + j] += p1[:, i] * p2[:, j]\n\n    return p_sum.argmax(dim=1)\n"
+  },
+  "visual_files": {},
+  "file": "student_perfect_conv.ipynb"
+}

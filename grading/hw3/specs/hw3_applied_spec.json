@@ -1,0 +1,115 @@
+{
+  "name": "HW3 Applied: Zero-Shot Super Resolution",
+  "description": "Grading spec for HW3 applied ZSSR implementation",
+  "total_points": 100,
+  "bonus_points": 15,
+  "timeout_seconds": 600,
+  "requires_gpu": false,
+  "requires_data": false,
+  "grading_mode": "code_analysis",
+  "tests": [
+    {
+      "name": "model_defined",
+      "points": 5,
+      "description": "ZSSRNet class exists and is a nn.Module",
+      "check": "class_exists",
+      "target": "ZSSRNet",
+      "base_class": "nn.Module"
+    },
+    {
+      "name": "model_output_shape",
+      "points": 10,
+      "description": "Forward output has correct spatial dims (scale_factor * input)",
+      "check": "method_exists",
+      "target": "ZSSRNet",
+      "method": "forward"
+    },
+    {
+      "name": "dataset_defined",
+      "points": 5,
+      "description": "ZSSRDataset class exists and returns dict with HR/LR keys",
+      "check": "class_exists",
+      "target": "ZSSRDataset",
+      "base_class": "Dataset"
+    },
+    {
+      "name": "dataset_shapes",
+      "points": 5,
+      "description": "Dataset __getitem__ returns dict with correct HR/LR shapes",
+      "check": "method_exists",
+      "target": "ZSSRDataset",
+      "method": "__getitem__"
+    },
+    {
+      "name": "train_function",
+      "points": 5,
+      "description": "train_zssr function is defined",
+      "check": "function_exists",
+      "target": "train_zssr"
+    },
+    {
+      "name": "psnr_improves",
+      "points": 20,
+      "description": "After training, PSNR > bicubic baseline (code inspection)",
+      "check": "code_contains",
+      "patterns": [
+        "criterion",
+        "backward",
+        "optimizer.step",
+        "loss_history",
+        "psnr_history"
+      ]
+    },
+    {
+      "name": "evaluation_function",
+      "points": 5,
+      "description": "evaluate_zssr function is defined",
+      "check": "function_exists",
+      "target": "evaluate_zssr"
+    },
+    {
+      "name": "analysis",
+      "points": 10,
+      "type": "manual",
+      "description": "Written analysis of ZSSR performance vs bicubic"
+    },
+    {
+      "name": "understanding",
+      "points": 10,
+      "type": "manual",
+      "description": "Explanation of patch recurrence concept in ZSSR"
+    },
+    {
+      "name": "visualization",
+      "points": 10,
+      "description": "Training curves and comparison images visualized",
+      "check": "code_contains",
+      "patterns": [
+        "matplotlib",
+        "imshow"
+      ]
+    },
+    {
+      "name": "augmentation_bonus",
+      "points": 15,
+      "bonus": true,
+      "description": "ensemble_predict_zssr implemented and improves PSNR",
+      "check": "function_exists",
+      "target": "ensemble_predict_zssr"
+    }
+  ],
+  "rubric": {
+    "analysis": {
+      "excellent": "Clear explanation of ZSSR advantages over bicubic, quantified improvements, discussion of limitations",
+      "good": "Good explanation of improvements, mostly quantified",
+      "acceptable": "Basic explanation of ZSSR approach",
+      "poor": "Minimal or unclear analysis"
+    },
+    "understanding": {
+      "excellent": "Deep explanation of patch recurrence, connection to image statistics, mentions internal vs external patches",
+      "good": "Clear explanation of how recurrence helps training",
+      "acceptable": "Basic understanding demonstrated",
+      "poor": "Incomplete or unclear"
+    }
+  }
+}

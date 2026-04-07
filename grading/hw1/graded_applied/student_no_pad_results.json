@@ -1,0 +1,40 @@
+{
+  "student_id": "NOPAD_102",
+  "tests": {
+    "energy_shape": "FAIL: Energy shape torch.Size([18, 28]), expected (20, 30)",
+    "energy_nonneg": "PASS",
+    "energy_correctness": "FAIL: The size of tensor a (33) must match the size of tensor b (35) at non-singleton dimension 1",
+    "energy_uniform": "PASS",
+    "energy_toy_image": "FAIL: Shape torch.Size([6, 4]) != torch.Size([8, 6])",
+    "energy_real_image": "FAIL: Shape torch.Size([260, 498]) != torch.Size([262, 500])",
+    "seam_shape": "PASS",
+    "seam_connected": "PASS",
+    "seam_bounds": "PASS",
+    "seam_optimal": "PASS",
+    "seam_trivial": "PASS",
+    "seam_toy_image": "PASS",
+    "seam_real_image": "PASS",
+    "remove_shape_rgb": "PASS",
+    "remove_shape_gray": "PASS",
+    "remove_correctness": "PASS",
+    "remove_real_image": "PASS",
+    "carve_shape": "FAIL: index 28 is out of bounds for dimension 0 with size 28",
+    "carve_correctness_small": "FAIL: index 18 is out of bounds for dimension 0 with size 18",
+    "carve_preserves_range": "FAIL: index 23 is out of bounds for dimension 0 with size 23",
+    "carve_real_image": "FAIL: index 260 is out of bounds for dimension 0 with size 260"
+  },
+  "timing": {
+    "carve_10_seams_50x80": "FAIL: index 48 is out of bounds for dimension 0 with size 48"
+  },
+  "source": {
+    "compute_energy": "def compute_energy(gray):\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    return gx.abs() + gy.abs()  # forgot to pad!\n",
+    "find_seam": "def find_seam(energy):\n    H, W = energy.shape\n    M = torch.zeros_like(energy)\n    M[0] = energy[0]\n    backtrack = torch.zeros(H, W, dtype=torch.long)\n    for i in range(1, H):\n        left = F.pad(M[i-1, :W-1].unsqueeze(0), (1, 0), value=float('inf')).squeeze(0)\n        right = F.pad(M[i-1, 1:].unsqueeze(0), (0, 1), value=float('inf')).squeeze(0)\n        center = M[i-1]\n        stacked = torch.stack([left, center, right], dim=0)\n        vals, dirs = stacked.min(dim=0)\n        M[i] = energy[i] + vals\n        backtrack[i] = dirs - 1\n    seam = torch.zeros(H, dtype=torch.long)\n    seam[-1] = M[-1].argmin()\n    for i in range(H-2, -1, -1):\n        seam[i] = seam[i+1] + backtrack[i+1, seam[i+1]]\n        seam[i] = seam[i].clamp(0, W-1)\n    return seam\n",
+    "remove_seam": "def remove_seam(img, seam):\n    if img.dim() == 2:\n        H, W = img.shape\n        mask = torch.ones(H, W, dtype=torch.bool)\n        for i in range(H):\n            mask[i, seam[i]] = False\n        return img[mask].reshape(H, W-1)\n    else:\n        H, W, C = img.shape\n        mask = torch.ones(H, W, dtype=torch.bool)\n        for i in range(H):\n            mask[i, seam[i]] = False\n        return img[mask.unsqueeze(-1).expand_as(img)].reshape(H, W-1, C)\n",
+    "seam_carve": "def seam_carve(img, n_seams, show_progress=True):\n    result = img.clone()\n    for k in range(n_seams):\n        gray = to_grayscale(result)\n        energy = compute_energy(gray)\n        seam = find_seam(energy)\n        result = remove_seam(result, seam)\n        if show_progress and (k+1) % 10 == 0:\n            print(f'  Removed {k+1}/{n_seams} seams')\n    return result\n"
+  },
+  "visual_files": {
+    "vis_energy": "grading/hw1/graded_applied/student_no_pad_vis_energy.png",
+    "vis_seam": "grading/hw1/graded_applied/student_no_pad_vis_seam.png"
+  },
+  "file": "student_no_pad.ipynb"
+}

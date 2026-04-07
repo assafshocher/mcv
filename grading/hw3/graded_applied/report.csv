@@ -1,0 +1,5 @@
+student_id,file,model_defined,model_output_shape,dataset_defined,dataset_shapes,train_function,psnr_improves,evaluation_function,analysis,understanding,visualization,augmentation_bonus,total_grade,bonus
+MISSING,student_bad_dataset.ipynb,5,10,5,5,5,20,5,0,0,10,0,65,0
+MISSING,student_no_residual.ipynb,5,10,5,5,5,20,5,0,0,10,0,65,0
+MISSING,student_perfect.ipynb,5,10,5,5,5,20,5,0,0,10,15,65,15
+MISSING,student_minimal.ipynb,5,10,5,0,0,20,0,0,0,10,0,50,0

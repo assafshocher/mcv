@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# LaTeX temp files
+*.aux
+*.log
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor temp files
+zi*
+*~
+*.swp
+
+# Data files (too large for git)
+grading/data/
+
+# Grading work directories (temp)
+grading/*/graded_*/_work_*/
+
+# Old kit directories (superseded by grading/)
+hw2_grading_kit/
+hw3_grading_kit/
+mcv_hw_grading_and_testing_kit/
+
+# Local website copy (root-level files are canonical)
+mcv-website-clean/
+
+# Claude settings
+.claude/

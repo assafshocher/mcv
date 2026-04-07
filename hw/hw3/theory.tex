@@ -1,0 +1,63 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{Modern Computer Vision} --- Technion, Spring 2026}
+\rhead{HW 3 --- Theory}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\R}{\mathbb{R}}
+\DeclareMathOperator{\conv}{*}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Homework 3 --- Theory}\\[6pt]
+  \textcolor{gray}{Due: May 31, 2026}
+\end{center}
+
+\vspace{12pt}
+
+\noindent
+A 1-D stride-2 convolution layer is applied twice sequentially to an input 1-D tensor,
+with the same filter denoted $k_2$. The input is padded with zeros only once before the
+two convolution layers are applied, so that the final output size is exactly $\frac{1}{4}$ of the
+input size. Find an equivalent filter $k_4$ that, when applied just once with a stride-4
+convolution layer and the same padding, yields the exact same result.
+
+\medskip
+\noindent
+\textcolor{gray}{\small
+Guidance: recall that a convolution layer (with appropriate padding) performs
+cross-correlation---discrete non-circular convolution with the \textbf{flipped} filter.
+Also note that a stride-$s$ convolution is equivalent to a convolution followed by
+subsampling by $s$. Thus $k_4$ is defined by:
+\[
+  x \conv \tilde{k}_4 \;\downarrow_4
+  \;=\;
+  (x \conv \tilde{k}_2 \;\downarrow_2) \conv \tilde{k}_2 \;\downarrow_2
+\]
+where $\tilde{k}$ is $k$ flipped and $\downarrow_s$ means subsampling by a factor of $s$.}
+
+\medskip
+\noindent
+\textcolor{gray}{\small Hint: use the notion of dilated convolution.}
+
+\medskip
+\noindent
+\textcolor{gray}{\small Note: a correct final answer with a reasonable explanation will receive full credit;
+a full formal proof is not required.}
+
+\vfill
+\begin{center}
+{\small\textcolor{gray}{Modern Computer Vision --- Technion --- Spring 2026 --- Assaf Shocher}}
+\end{center}
+
+\end{document}

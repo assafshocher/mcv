@@ -1,0 +1,22 @@
+{
+  "student_id": "ARGMAX_213",
+  "tests": {
+    "model_defined": "PASS",
+    "model_accuracy": "PASS",
+    "training_curves": "PASS",
+    "predict_sum_defined": "PASS",
+    "predict_sum_batch": "PASS",
+    "addition_accuracy": "PASS",
+    "approach_explanation": "MANUAL",
+    "analysis": "MANUAL",
+    "bonus_convolution": "FAIL: Bonus not awarded \u2014 no probability convolution pattern detected"
+  },
+  "timing": {},
+  "source": {
+    "model": "NOT_FOUND",
+    "train_losses": "NOT_FOUND",
+    "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Simple argmax approach: predict each digit, add them.\"\"\"\n    model.eval()\n    with torch.no_grad():\n        pred1 = model(img1).argmax(dim=1)\n        pred2 = model(img2).argmax(dim=1)\n    return (pred1 + pred2).cpu()\n"
+  },
+  "visual_files": {},
+  "file": "student_argmax_only.ipynb"
+}

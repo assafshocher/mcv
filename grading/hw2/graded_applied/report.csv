@@ -1,0 +1,5 @@
+student_id,file,model_defined,model_accuracy,training_curves,predict_sum_defined,predict_sum_batch,addition_accuracy,approach_explanation,analysis,bonus_convolution,total_grade,bonus
+ARGMAX_213,student_argmax_only.ipynb,5,20,5,5,5,30,0,0,0,70,0
+PERFECT_211,student_perfect_conv.ipynb,5,20,5,5,5,30,0,0,10,70,10
+NUMPY_212,student_perfect_numpy.ipynb,5,20,5,5,5,30,0,0,10,70,10
+UNDER_214,student_undertrained.ipynb,5,20,5,5,5,30,0,0,10,70,10

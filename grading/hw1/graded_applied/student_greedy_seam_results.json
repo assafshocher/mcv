@@ -1,0 +1,41 @@
+{
+  "student_id": "GREEDY_104",
+  "tests": {
+    "energy_shape": "PASS",
+    "energy_nonneg": "PASS",
+    "energy_correctness": "PASS",
+    "energy_uniform": "PASS",
+    "energy_toy_image": "PASS",
+    "energy_real_image": "PASS",
+    "seam_shape": "PASS",
+    "seam_connected": "PASS",
+    "seam_bounds": "PASS",
+    "seam_optimal": "FAIL: Seam cost 4.8339 != optimal 4.1214",
+    "seam_trivial": "PASS",
+    "seam_toy_image": "PASS",
+    "seam_real_image": "FAIL: Real image seam cost 103.6407 != optimal 20.1440",
+    "remove_shape_rgb": "PASS",
+    "remove_shape_gray": "PASS",
+    "remove_correctness": "PASS",
+    "remove_real_image": "PASS",
+    "carve_shape": "PASS",
+    "carve_correctness_small": "FAIL: Max diff 0.962285",
+    "carve_preserves_range": "PASS",
+    "carve_real_image": "FAIL: Real image carve differs from reference: max diff 0.992157"
+  },
+  "timing": {
+    "carve_10_seams_50x80": 5.7
+  },
+  "source": {
+    "compute_energy": "def compute_energy(gray):\n    H, W = gray.shape\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    e = gx.abs() + gy.abs()\n    return F.pad(e.unsqueeze(0), (1, 1, 1, 1), mode='replicate').squeeze(0)\n",
+    "find_seam": "def find_seam(energy):\n    H, W = energy.shape\n    seam = torch.zeros(H, dtype=torch.long)\n    seam[0] = energy[0].argmin()\n    for i in range(1, H):\n        j = seam[i-1].item()\n        lo = max(0, j-1)\n        hi = min(W, j+2)\n        seam[i] = lo + energy[i, lo:hi].argmin()\n    return seam\n",
+    "remove_seam": "def remove_seam(img, seam):\n    if img.dim() == 2:\n        H, W = img.shape\n        mask = torch.ones(H, W, dtype=torch.bool)\n        for i in range(H):\n            mask[i, seam[i]] = False\n        return img[mask].reshape(H, W-1)\n    else:\n        H, W, C = img.shape\n        mask = torch.ones(H, W, dtype=torch.bool)\n        for i in range(H):\n            mask[i, seam[i]] = False\n        return img[mask.unsqueeze(-1).expand_as(img)].reshape(H, W-1, C)\n",
+    "seam_carve": "def seam_carve(img, n_seams, show_progress=True):\n    result = img.clone()\n    for k in range(n_seams):\n        gray = to_grayscale(result)\n        energy = compute_energy(gray)\n        seam = find_seam(energy)\n        result = remove_seam(result, seam)\n        if show_progress and (k+1) % 10 == 0:\n            print(f'  Removed {k+1}/{n_seams} seams')\n    return result\n"
+  },
+  "visual_files": {
+    "vis_energy": "grading/hw1/graded_applied/student_greedy_seam_vis_energy.png",
+    "vis_seam": "grading/hw1/graded_applied/student_greedy_seam_vis_seam.png",
+    "vis_carve": "grading/hw1/graded_applied/student_greedy_seam_vis_carve.png"
+  },
+  "file": "student_greedy_seam.ipynb"
+}

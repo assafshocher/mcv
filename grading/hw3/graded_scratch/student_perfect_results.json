@@ -1,0 +1,21 @@
+{
+  "student_id": "MISSING",
+  "tests": {
+    "conv2d_forward_shape": "PASS",
+    "conv2d_forward_values": "PASS",
+    "conv2d_backward_x": "PASS",
+    "conv2d_backward_w": "PASS",
+    "conv2d_backward_b": "PASS",
+    "max_pool2d_forward": "PASS",
+    "max_pool2d_backward": "PASS",
+    "conv2d_layer": "PASS",
+    "maxpool2d_layer": "PASS",
+    "momentum_sgd": "PASS",
+    "convnet_forward": "PASS",
+    "cifar_accuracy": "SKIP"
+  },
+  "timing": {},
+  "source": {},
+  "visual_files": {},
+  "file": "student_perfect.ipynb"
+}

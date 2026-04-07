@@ -1,0 +1,22 @@
+{
+  "student_id": "NUMPY_212",
+  "tests": {
+    "model_defined": "PASS",
+    "model_accuracy": "PASS",
+    "training_curves": "PASS",
+    "predict_sum_defined": "PASS",
+    "predict_sum_batch": "PASS",
+    "addition_accuracy": "PASS",
+    "approach_explanation": "MANUAL",
+    "analysis": "MANUAL",
+    "bonus_convolution": "PASS"
+  },
+  "timing": {},
+  "source": {
+    "model": "NOT_FOUND",
+    "train_losses": "NOT_FOUND",
+    "predict_sum": "def predict_sum(model, img1, img2):\n    \"\"\"Use numpy convolve for the probability combination.\"\"\"\n    model.eval()\n    with torch.no_grad():\n        p1 = torch.softmax(model(img1), dim=1).cpu().numpy()\n        p2 = torch.softmax(model(img2), dim=1).cpu().numpy()\n\n    B = p1.shape[0]\n    preds = []\n    for b in range(B):\n        p_sum = np.convolve(p1[b], p2[b])  # length 19\n        preds.append(np.argmax(p_sum))\n    return torch.tensor(preds)\n"
+  },
+  "visual_files": {},
+  "file": "student_perfect_numpy.ipynb"
+}

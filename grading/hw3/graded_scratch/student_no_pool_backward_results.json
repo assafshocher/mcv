@@ -1,0 +1,21 @@
+{
+  "student_id": "MISSING",
+  "tests": {
+    "conv2d_forward_shape": "PASS",
+    "conv2d_forward_values": "PASS",
+    "conv2d_backward_x": "PASS",
+    "conv2d_backward_w": "PASS",
+    "conv2d_backward_b": "PASS",
+    "max_pool2d_forward": "PASS",
+    "max_pool2d_backward": "FAIL: max_pool2d backward mismatch max diff: 2.833967924118042",
+    "conv2d_layer": "FAIL: TODO: Initialize Conv2d weights and bias",
+    "maxpool2d_layer": "FAIL: TODO: Implement MaxPool2d forward",
+    "momentum_sgd": "PASS",
+    "convnet_forward": "FAIL: TODO: Initialize Conv2d weights and bias",
+    "cifar_accuracy": "SKIP"
+  },
+  "timing": {},
+  "source": {},
+  "visual_files": {},
+  "file": "student_no_pool_backward.ipynb"
+}

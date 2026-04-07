@@ -1,0 +1,33 @@
+{
+  "student_id": "UNSTABLE_203",
+  "tests": {
+    "linear_forward": "PASS",
+    "linear_backward_x": "PASS",
+    "linear_backward_w": "PASS",
+    "linear_backward_b": "PASS",
+    "relu_forward": "PASS",
+    "relu_backward": "PASS",
+    "ce_forward": "PASS",
+    "ce_backward": "PASS",
+    "linear_layer": "PASS",
+    "softmax_classifier": "PASS",
+    "mlp_model": "PASS",
+    "sgd_step": "PASS",
+    "sgd_zero_grad": "PASS",
+    "train_epoch_runs": "PASS",
+    "mnist_accuracy": "PASS"
+  },
+  "timing": {},
+  "source": {
+    "linear": "def linear(x, w, b, ctx=None):\n    y = x @ w.T + b\n    if ctx is not None:\n        ctx.append([linear_backward, [y, x, w, b]])\n    return y\n",
+    "relu": "def relu(x, ctx=None):\n    y = x.clamp(min=0).clone()\n    if ctx is not None:\n        ctx.append([relu_backward, [y, x]])\n    return y\n",
+    "cross_entropy_loss": "def cross_entropy_loss(z, targets, ctx=None):\n    B = z.shape[0]\n    # No numerical stability (no max subtraction)\n    log_sum_exp = z.exp().sum(dim=1).log()\n    loss = (log_sum_exp - z[torch.arange(B), targets]).mean()\n    if ctx is not None:\n        ctx.append([cross_entropy_loss_backward, [loss, z, targets]])\n    return loss\n",
+    "Linear": "NOT_FOUND",
+    "SoftmaxClassifier": "NOT_FOUND",
+    "MLP": "NOT_FOUND",
+    "SGD": "NOT_FOUND",
+    "train_epoch": "def train_epoch(model, optimizer, loader):\n    total_loss = 0\n    n_batches = 0\n    for images, labels in loader:\n        x = images.view(images.size(0), -1)\n        ctx = []\n        optimizer.zero_grad()\n        logits = model(x, ctx=ctx)\n        loss = cross_entropy_loss(logits, labels, ctx=ctx)\n        backward(loss, ctx)\n        optimizer.step()\n        total_loss += loss.item()\n        n_batches += 1\n    return total_loss / n_batches\n"
+  },
+  "visual_files": {},
+  "file": "student_unstable_ce.ipynb"
+}
