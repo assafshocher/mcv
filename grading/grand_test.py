@@ -429,7 +429,7 @@ def validate_results(output_dir, spec_path, expected_perfect_grade):
         total = grade["total_grade"]
         bonus = grade.get("bonus", 0)
         tests = result.get("tests", {})
-        n_pass = sum(1 for v in tests.values() if v == "PASS")
+        n_pass = sum(1 for v in tests.values() if v == "PASS" or (isinstance(v, str) and v.startswith("BONUS:")))
         n_total = len(tests)
 
         # Check perfect student gets expected grade
@@ -653,7 +653,7 @@ def run_grand_test(targets=None, skip_generate=False, skip_execute=False, fast=F
                     "student": r.get("student_id", "?"),
                     "total": g["total_grade"],
                     "bonus": g.get("bonus", 0),
-                    "tests_passed": sum(1 for v in r.get("tests", {}).values() if v == "PASS"),
+                    "tests_passed": sum(1 for v in r.get("tests", {}).values() if v == "PASS" or (isinstance(v, str) and v.startswith("BONUS:"))),
                     "tests_total": len(r.get("tests", {})),
                 }
                 for r, g in zip(all_r, grades)

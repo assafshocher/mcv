@@ -8,6 +8,7 @@
       "dataset_shapes": "FAIL: HR height 32 should be 2x LR height 0",
       "train_runs": "FAIL: stack expects each tensor to be equal size, but got [3, 32, 32] at entry 0 and [3, 0, 32] at entry 1",
       "psnr_improves": "FAIL: stack expects each tensor to be equal size, but got [3, 0, 64] at entry 0 and [3, 64, 64] at entry 3",
+      "psnr_quality_bonus": "FAIL: name '_psnr_zssr' is not defined",
       "evaluate_function": "PASS",
       "visualization": "PASS",
       "augmentation_bonus": "FAIL: Bonus not implemented"
@@ -28,6 +29,7 @@
       "dataset_shapes": "PASS",
       "train_runs": "PASS",
       "psnr_improves": "PASS",
+      "psnr_quality_bonus": "BONUS: 5",
       "evaluate_function": "PASS",
       "visualization": "PASS",
       "augmentation_bonus": "PASS"

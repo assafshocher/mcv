@@ -210,7 +210,9 @@ def build_test_code_array(spec: dict) -> str:
         lines.append(f"try:")
         for code_line in code.split("\n"):
             lines.append(f"    {code_line}")
-        lines.append(f"    _results['tests']['{test_name}'] = 'PASS'")
+        # Allow test code to set result directly (e.g., "BONUS: N")
+        lines.append(f"    if '{test_name}' not in _results['tests']:")
+        lines.append(f"        _results['tests']['{test_name}'] = 'PASS'")
         lines.append(f"except Exception as e:")
         lines.append(f"    _results['tests']['{test_name}'] = f'FAIL: {{e}}'")
         lines.append("")
@@ -558,11 +560,23 @@ def compute_scores(all_results: list, spec: dict) -> list:
                         bonus += pts
                     else:
                         total += pts
+                    row[tname] = pts
+                elif isinstance(result, str) and result.startswith("BONUS:"):
+                    # Variable bonus: "BONUS: 12.5" — awards that many points
+                    try:
+                        awarded = min(pts, round(float(result.split(":")[1].strip())))
+                    except (ValueError, IndexError):
+                        awarded = 0
+                    if is_bonus:
+                        bonus += awarded
+                    else:
+                        total += awarded
+                    row[tname] = awarded
                 elif result == "MANUAL":
-                    pass  # Manual grading — don't count
-                # FAIL or SKIP: 0 points
-
-                row[tname] = pts if result == "PASS" else 0
+                    row[tname] = 0  # Manual grading — don't count
+                else:
+                    # FAIL or SKIP: 0 points
+                    row[tname] = 0
 
             row["total_grade"] = total
             row["bonus"] = bonus

@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-04-08 20:42:10",
-  "elapsed_seconds": 346,
+  "timestamp": "2026-04-08 22:05:52",
+  "elapsed_seconds": 348,
   "timing_per_assignment": {
-    "hw3_applied": 345.6
+    "hw3_applied": 347.8
   },
   "results": {
     "hw3_applied": {
@@ -13,14 +13,14 @@
           "total": 55,
           "bonus": 0,
           "tests_passed": 5,
-          "tests_total": 9
+          "tests_total": 10
         },
         {
           "student": "MISSING",
           "total": 100,
-          "bonus": 15,
+          "bonus": 20,
           "tests_passed": 9,
-          "tests_total": 9
+          "tests_total": 10
         }
       ]
     }
