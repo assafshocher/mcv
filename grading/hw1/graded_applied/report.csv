@@ -1,6 +1,3 @@
 student_id,file,compute_energy,find_seam,remove_seam,seam_carve,total_grade
-PERFECT_101,student_perfect.ipynb,25,30,20,25,100
-GREEDY_104,student_greedy_seam.ipynb,25,21,20,13,79
-NOABS_103,student_no_abs.ipynb,8,30,20,13,71
-NOPAD_102,student_no_pad.ipynb,8,30,20,0,58
-PARTIAL_105,student_partial.ipynb,25,0,0,0,25
+perfect_student,student_perfect.ipynb,25,30,20,25,100
+error_student,student_error.ipynb,25,21,20,13,79

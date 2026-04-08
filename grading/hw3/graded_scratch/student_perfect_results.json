@@ -13,10 +13,12 @@
     "momentum_sgd": "PASS",
     "convnet_forward": "PASS",
     "cifar_accuracy": "PASS",
-    "cifar_accuracy_bonus": "FAIL: Bonus: need >=45% on mini-test, got 34.80%"
+    "cifar_accuracy_bonus": "FAIL: Bonus: need >=35% on mini-test, got 34.80%"
   },
   "timing": {},
   "source": {},
   "visual_files": {},
+  "test_cell_images": [],
+  "test_cell_html": [],
   "file": "student_perfect.ipynb"
 }

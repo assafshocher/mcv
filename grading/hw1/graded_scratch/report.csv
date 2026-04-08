@@ -1,0 +1,3 @@
+student_id,file,conv2d_loops,im2patches,conv2d_vectorized,total_grade
+perfect_student,student_perfect.ipynb,30,30,40,100
+error_student,student_error.ipynb,8,30,27,65

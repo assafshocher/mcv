@@ -472,8 +472,9 @@ def grade_notebook(nb_path: Path, spec: dict, output_dir: Path,
             shutil.copy2(str(vis_path), str(dest))
             results["visual_files"][vt["name"]] = str(dest)
 
-    # Extract image outputs from the test cell (last code cell in executed nb)
+    # Extract image and HTML outputs from the test cell (last code cell in executed nb)
     results["test_cell_images"] = []
+    results["test_cell_html"] = []
     test_cell_node = nb.cells[-1] if nb.cells else None
     if test_cell_node and test_cell_node.cell_type == 'code':
         for out in test_cell_node.get('outputs', []):
@@ -481,6 +482,8 @@ def grade_notebook(nb_path: Path, spec: dict, output_dir: Path,
                 data = out.get('data', {})
                 if 'image/png' in data:
                     results["test_cell_images"].append(data['image/png'])
+                if 'text/html' in data:
+                    results["test_cell_html"].append(data['text/html'])
 
     results["file"] = nb_path.name
     if not results.get("student_id") or results["student_id"] == "MISSING":
@@ -568,6 +571,58 @@ def compute_scores(all_results: list, spec: dict) -> list:
     return grades
 
 
+def _get_failure_hints(test_name: str, fail_msg: str, test_info: dict) -> list:
+    """Generate helpful hints for common failure patterns."""
+    hints = []
+    msg = fail_msg.lower()
+
+    # Shape mismatches
+    if "shape" in msg or "expected" in msg and ("got" in msg):
+        hints.append("Check your tensor dimensions — ensure you're handling batch, channel, height, width correctly")
+        if "64" in msg or "spatial" in msg:
+            hints.append("For super-resolution, the output spatial size should be `scale_factor` times the input")
+
+    # NotImplementedError
+    if "notimplementederror" in msg:
+        hints.append("This function/class still has the template `raise NotImplementedError()` — replace it with your implementation")
+
+    # Type errors
+    if "typeerror" in msg:
+        if "argument" in msg:
+            hints.append("Check the function signature matches what's expected in the docstring")
+        if "not callable" in msg:
+            hints.append("Make sure the class/function is properly defined (not overwritten by a variable)")
+
+    # PSNR / quality failures
+    if "psnr" in msg or "bicubic" in msg or "must beat" in msg:
+        hints.append("Your model isn't learning well enough. Try: more epochs, better learning rate, check residual connection")
+        hints.append("Make sure `train_zssr` uses L1Loss (not MSE) and Adam optimizer")
+        hints.append("Verify that your dataset returns HR/LR pairs with correct spatial relationship")
+
+    # Missing keys
+    if "missing key" in msg or "key:" in msg:
+        hints.append("Your function must return a dict with all required keys — check the docstring")
+
+    # Module / inheritance
+    if "nn.module" in msg or "must be" in msg and "module" in msg:
+        hints.append("Your class must inherit from `nn.Module` — use `class YourClass(nn.Module):`")
+
+    # Dataset issues
+    if "dataset" in msg or "dataloader" in msg:
+        hints.append("Make sure your Dataset returns a dict with 'HR' and 'LR' keys")
+        hints.append("HR crops should be `scale_factor` times larger than LR crops spatially")
+
+    # Attribute errors
+    if "attributeerror" in msg:
+        hints.append("A required attribute or method is missing — check your class definition")
+
+    # Import / name errors
+    if "nameerror" in msg:
+        hints.append("A required function or class is not defined — make sure all cells are run in order")
+
+    return hints
+
+
 def build_graded_notebook(nb_path: Path, results: dict, spec: dict, grades_row: dict) -> nbformat.NotebookNode:
     """Prepend grading report cells to a student notebook."""
     nb = nbformat.read(str(nb_path), as_version=4)
@@ -636,9 +691,10 @@ def build_graded_notebook(nb_path: Path, results: dict, spec: dict, grades_row: 
     header_lines.extend(["", "---"])
     cells.append(nbformat.v4.new_markdown_cell("\n".join(header_lines)))
 
-    # Include test cell images (e.g., ZSSR comparison) right after the grade table
+    # Include test cell images and HTML (e.g., ZSSR comparison, GIFs) after grade table
     test_images = results.get("test_cell_images", [])
-    if test_images:
+    test_html = results.get("test_cell_html", [])
+    if test_images or test_html:
         img_cell = nbformat.v4.new_code_cell(source="# Grading test results (auto-generated)")
         img_cell.outputs = []
         for img_b64 in test_images:
@@ -647,33 +703,56 @@ def build_graded_notebook(nb_path: Path, results: dict, spec: dict, grades_row: 
                 data={'image/png': img_b64, 'text/plain': ['<grading result image>']},
                 metadata={'image/png': {'width': 800}}
             ))
-        # Mark cell as already executed so Jupyter doesn't show [*]
+        for html_str in test_html:
+            html_data = html_str if isinstance(html_str, str) else str(html_str)
+            img_cell.outputs.append(nbformat.v4.new_output(
+                output_type='display_data',
+                data={'text/html': html_data, 'text/plain': ['<grading result>']},
+            ))
         img_cell.execution_count = None
         cells.append(img_cell)
 
-    # Per-test detail cells for failures
+    # Per-test detail cells for failures — include analysis and suggestions
     for test_info in _iter_tests(spec):
         tname = test_info["name"]
         result = tests.get(tname, "NOT_RUN")
         if result not in ("PASS", "MANUAL", "NOT_RUN"):
+            fail_msg = result.replace("FAIL: ", "") if result.startswith("FAIL:") else result
             detail = [
                 f"### `{tname}` — FAIL",
                 "",
-                f"**Result:** {result}",
+                f"**Result:** `{fail_msg}`",
                 "",
                 f"**Description:** {test_info.get('description', '')}",
                 "",
-                "---",
             ]
+            # Add hints based on common failure patterns
+            hints = _get_failure_hints(tname, fail_msg, test_info)
+            if hints:
+                detail.append("**Possible issues:**")
+                for h in hints:
+                    detail.append(f"- {h}")
+                detail.append("")
+            detail.append("---")
             cells.append(nbformat.v4.new_markdown_cell("\n".join(detail)))
 
+    # Check if student notebook has any outputs — warn if not
+    has_student_outputs = any(
+        c.cell_type == 'code' and c.get('outputs', [])
+        for c in nb.cells
+    )
+
     # Separator
-    cells.append(nbformat.v4.new_markdown_cell(
-        "---\n---\n\n"
-        "# Original Submission\n\n"
-        "*Everything below is the student's original work, unmodified.*\n\n"
-        "---"
-    ))
+    sep_lines = ["---\n---\n", "# Original Submission\n"]
+    if not has_student_outputs:
+        sep_lines.append(
+            "> **Note:** This notebook was submitted without cell outputs. "
+            "Students are required to submit notebooks with all outputs "
+            "(training curves, visualizations, results). "
+            "Missing outputs may indicate the notebook was not fully executed before submission.\n"
+        )
+    sep_lines.append("*Everything below is the student's original work, unmodified.*\n\n---")
+    cells.append(nbformat.v4.new_markdown_cell("\n".join(sep_lines)))
 
     nb.cells = cells + nb.cells
     return nb

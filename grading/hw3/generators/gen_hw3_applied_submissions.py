@@ -53,12 +53,7 @@ ZSSR_NET_PERFECT = '''class ZSSRNet(nn.Module):
         if target_size is None:
             target_size = (height * scale_factor, width * scale_factor)
 
-        upscaled = F.interpolate(
-            x,
-            size=target_size,
-            mode='bicubic',
-            align_corners=False
-        )
+        upscaled = resize_bicubic(x, size=target_size)
 
         # Residual network
         residual = upscaled.clone()
@@ -121,12 +116,7 @@ ZSSR_NET_NO_RESIDUAL = '''class ZSSRNet(nn.Module):
         if target_size is None:
             target_size = (height * scale_factor, width * scale_factor)
 
-        upscaled = F.interpolate(
-            x,
-            size=target_size,
-            mode='bicubic',
-            align_corners=False
-        )
+        upscaled = resize_bicubic(x, size=target_size)
 
         # BUG: Missing residual connection
         # residual = upscaled.clone()
@@ -155,14 +145,8 @@ ZSSR_DATASET_PERFECT = '''class ZSSRDataset(Dataset):
         self.n_samples = n_samples
         self.augment = augment
 
-        # Downscale to create LR
-        lr_size = (image.shape[0] // scale_factor, image.shape[1] // scale_factor)
-        self.lr_image = F.interpolate(
-            image.unsqueeze(0).unsqueeze(0),
-            size=lr_size,
-            mode='bicubic',
-            align_corners=False
-        ).squeeze(0).squeeze(0)
+        # Downscale to create LR using resize_bicubic (uses resize_right for correct alignment)
+        self.lr_image = resize_bicubic(image, scale_factor=1.0/scale_factor)
 
         self.hr_image = image
 
@@ -224,14 +208,8 @@ ZSSR_DATASET_BAD = '''class ZSSRDataset(Dataset):
         self.n_samples = n_samples
         self.augment = augment
 
-        # BUG: Not properly downscaling
-        # This doesn't properly account for the scale factor
-        self.lr_image = F.interpolate(
-            image.unsqueeze(0).unsqueeze(0),
-            size=(image.shape[0] // 2, image.shape[1] // 2),  # Hard-coded division by 2
-            mode='bicubic',
-            align_corners=False
-        ).squeeze(0).squeeze(0)
+        # BUG: Not properly downscaling — hard-coded division by 2
+        self.lr_image = resize_bicubic(image, scale_factor=0.5)
 
         self.hr_image = image
 
@@ -293,24 +271,32 @@ TRAIN_ZSSR_PERFECT = '''def train_zssr(
             hr = batch['HR'].to(device)
             lr = batch['LR'].to(device)
 
-            # Handle augmented data shape
-            if hr.dim() == 4:  # (B, 8, H, W) for augmented
-                batch_size, n_aug, h, w = hr.shape
-                hr = hr.view(batch_size * n_aug, 1, h, w)
-                lr = lr.view(batch_size * n_aug, 1, h, w)
-            else:  # (B, 1, H, W)
-                batch_size = hr.shape[0]
-                hr = hr.view(batch_size, 1, hr.shape[-2], hr.shape[-1])
-                lr = lr.view(batch_size, 1, lr.shape[-2], lr.shape[-1])
+            # Ensure 4D: (B, 1, H, W)
+            if hr.dim() == 3:
+                hr = hr.unsqueeze(1)
+            if lr.dim() == 3:
+                lr = lr.unsqueeze(1)
+
+            # If augmented (B, 8, H, W), merge aug into batch
+            if hr.shape[1] > 1:
+                B, aug, h, w = hr.shape
+                hr = hr.view(B * aug, 1, h, w)
+                lr = lr.view(B * aug, 1, lr.shape[-2], lr.shape[-1])
 
             # Forward pass
             optimizer.zero_grad()
-            sr = model(lr, scale_factor=scale_factor, target_size=(h * scale_factor, w * scale_factor))
-            sr = sr.unsqueeze(1)  # Add channel dimension
+            target_h, target_w = hr.shape[-2], hr.shape[-1]
+            sr = model(lr, scale_factor=scale_factor, target_size=(target_h, target_w))
+
+            # Ensure 4D output
+            if sr.dim() == 2:
+                sr = sr.unsqueeze(0).unsqueeze(0)
+            elif sr.dim() == 3:
+                sr = sr.unsqueeze(1)
 
             # Ensure shapes match
             if sr.shape != hr.shape:
-                sr = F.interpolate(sr, size=hr.shape[2:], mode='bicubic', align_corners=False)
+                sr = resize_bicubic(sr, size=(target_h, target_w))
 
             # Compute loss
             loss = criterion(sr, hr)
@@ -354,14 +340,8 @@ EVALUATE_ZSSR_PERFECT = '''def evaluate_zssr(
     model.eval()
 
     with torch.no_grad():
-        # Create LR from HR
-        lr_size = (image_hr.shape[0] // scale_factor, image_hr.shape[1] // scale_factor)
-        image_lr = F.interpolate(
-            image_hr.unsqueeze(0).unsqueeze(0),
-            size=lr_size,
-            mode='bicubic',
-            align_corners=False
-        ).squeeze(0).squeeze(0)
+        # Create LR from HR using resize_bicubic (resize_right for correct alignment)
+        image_lr = resize_bicubic(image_hr, scale_factor=1.0/scale_factor)
 
         # Bicubic baseline
         image_bicubic = resize_bicubic(image_lr, scale_factor=scale_factor)
@@ -369,7 +349,14 @@ EVALUATE_ZSSR_PERFECT = '''def evaluate_zssr(
         # ZSSR prediction
         image_lr_gpu = image_lr.unsqueeze(0).unsqueeze(0).to(device)
         image_sr = model(image_lr_gpu, scale_factor=scale_factor)
+        # Squeeze to 2D (H, W) to match image_hr
+        while image_sr.dim() > 2:
+            image_sr = image_sr.squeeze(0)
         image_sr = torch.clamp(image_sr, 0, 1)
+
+        # Ensure bicubic matches HR size
+        if image_bicubic.shape != image_hr.shape:
+            image_bicubic = resize_bicubic(image_bicubic, size=(image_hr.shape[0], image_hr.shape[1]))
 
         # Compute PSNR
         psnr_bicubic = psnr(image_bicubic, image_hr)
@@ -406,12 +393,14 @@ ENSEMBLE_PREDICT_PERFECT = '''def ensemble_predict_zssr(model, image_lr, scale_f
         for aug_img in augmented_images:
             aug_img_gpu = aug_img.unsqueeze(0).unsqueeze(0).to(device)
             sr = model(aug_img_gpu, scale_factor=scale_factor)
+            while sr.dim() > 2:
+                sr = sr.squeeze(0)
             sr = torch.clamp(sr, 0, 1)
 
             # Reverse augmentation
             aug_idx = len(predictions)
             if aug_idx % 2 == 1:  # Flip was applied
-                sr = torch.flip(sr, dims=[1])
+                sr = torch.flip(sr, dims=[-1])
 
             k_val = (aug_idx // 2) % 4
             for _ in range(k_val):

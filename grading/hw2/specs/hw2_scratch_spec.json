@@ -87,16 +87,13 @@
       "function": "train_epoch",
       "points": 5,
       "code": "m=MLP(784,128,10); opt=SGD(m.parameters(),lr=0.1)\nimport torchvision, torchvision.transforms as T\ntf=T.Compose([T.ToTensor(),T.Normalize((0.1307,),(0.3081,))])\ntd=torchvision.datasets.MNIST('./data',train=True,download=True,transform=tf)\nsmall=torch.utils.data.Subset(td, range(512))\nloader=torch.utils.data.DataLoader(small,batch_size=128)\nloss=train_epoch(m, opt, loader)\nassert isinstance(loss, float), f'train_epoch should return float loss, got {type(loss)}'\nassert loss < 5.0, f'loss too high after 1 epoch: {loss}'",
-      "visual_test": true,
-      "visual_name": "__vis_train_epoch__"
+      "description": "Training runs without error"
     },
     {
       "name": "mnist_accuracy",
       "function": "MLP",
       "points": 15,
-      "code": "# Check that model was trained and achieves reasonable accuracy\nacc = evaluate(model, test_loader)\nassert acc > 0.85, f'MLP accuracy {acc:.2%} is below 85%'\nprint(f'MLP test accuracy: {acc:.2%}')",
-      "visual_test": true,
-      "visual_name": "__vis_accuracy__"
+      "code": "import matplotlib\ntry:\n    matplotlib.use('module://matplotlib_inline.backend_inline')\nexcept Exception:\n    pass\nimport matplotlib.pyplot as plt\n# Check that model was trained and achieves reasonable accuracy\nacc = evaluate(model, test_loader)\nprint(f'MLP test accuracy: {acc:.2%}')\n\n# Visualize sample predictions\nimport torchvision, torchvision.transforms as T\ntf=T.Compose([T.ToTensor(),T.Normalize((0.1307,),(0.3081,))])\n_td=torchvision.datasets.MNIST('./data',train=False,download=True,transform=tf)\nfig, axes = plt.subplots(2, 8, figsize=(16, 4))\nfor i in range(16):\n    ax = axes[i//8][i%8]\n    img, label = _td[i]\n    ax.imshow(img.squeeze().numpy(), cmap='gray')\n    pred = model(img.view(1,-1)).argmax(1).item()\n    color = 'green' if pred == label else 'red'\n    ax.set_title(f'{pred}' + ('' if pred==label else f'({label})'), color=color, fontsize=12)\n    ax.axis('off')\nplt.suptitle(f'MLP Accuracy: {acc:.1%}', fontsize=16, fontweight='bold')\nplt.tight_layout()\nplt.show()\nassert acc > 0.85, f'MLP accuracy {acc:.2%} is below 85%'"
     },
     {
       "name": "mnist_bonus",

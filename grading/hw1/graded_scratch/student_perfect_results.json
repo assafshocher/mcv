@@ -1,0 +1,32 @@
+{
+  "student_id": "perfect_student",
+  "tests": {
+    "conv2d_loops_banned_ops": "PASS",
+    "loops_delta": "PASS",
+    "loops_correctness": "PASS",
+    "loops_nonsquare": "PASS",
+    "loops_is_conv_not_xcorr": "PASS",
+    "im2patches_banned_ops": "PASS",
+    "patches_shape": "PASS",
+    "patches_correctness": "PASS",
+    "patches_nonsquare": "PASS",
+    "patches_first_patch": "PASS",
+    "conv2d_vectorized_banned_ops": "PASS",
+    "vec_correctness": "PASS",
+    "vec_matches_loops": "PASS",
+    "vec_is_conv_not_xcorr": "PASS"
+  },
+  "timing": {
+    "loops_64": 13.0,
+    "vec_256": 173.8
+  },
+  "source": {
+    "conv2d_loops": "def conv2d_loops(image, kernel):\n    \"\"\"2D convolution using for loops with kernel flipping. Valid mode (no padding).\"\"\"\n    H, W = image.shape\n    kH, kW = kernel.shape\n    H_out, W_out = H - kH + 1, W - kW + 1\n    kernel_flipped = kernel.flip(0).flip(1)\n    output = torch.zeros(H_out, W_out)\n    for i in range(H_out):\n        for j in range(W_out):\n            output[i, j] = (image[i:i+kH, j:j+kW] * kernel_flipped).sum()\n    return output\n",
+    "im2patches": "def im2patches(image, kH, kW):\n    \"\"\"Extract patches from image for vectorized conv.\"\"\"\n    H, W = image.shape\n    H_out, W_out = H - kH + 1, W - kW + 1\n    patches = torch.zeros(H_out * W_out, kH * kW)\n    for i in range(H_out):\n        for j in range(W_out):\n            patches[i * W_out + j] = image[i:i+kH, j:j+kW].reshape(-1)\n    return patches\n",
+    "conv2d_vectorized": "def conv2d_vectorized(image, kernel):\n    \"\"\"Vectorized 2D convolution using im2patches.\"\"\"\n    kH, kW = kernel.shape\n    H_out = image.shape[0] - kH + 1\n    W_out = image.shape[1] - kW + 1\n    patches = im2patches(image, kH, kW)\n    kernel_flipped = kernel.flip(0).flip(1).reshape(-1)\n    result = patches @ kernel_flipped\n    return result.reshape(H_out, W_out)\n"
+  },
+  "visual_files": {},
+  "test_cell_images": [],
+  "test_cell_html": [],
+  "file": "student_perfect.ipynb"
+}

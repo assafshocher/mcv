@@ -83,8 +83,8 @@
       "name": "cifar_accuracy_bonus",
       "points": 10,
       "bonus": true,
-      "description": "Mini-training achieves >=45% on CIFAR-10 subset",
-      "code": "# Bonus: check if the mini-trained model from previous test achieved high accuracy\nassert _acc >= 0.35, f'Bonus: need >=35% on mini-test, got {_acc:.2%}'\nprint(f'BONUS: CIFAR-10 mini-test accuracy {_acc:.2%} exceeds 45%!')"
+      "description": "Mini-training achieves >=35% on CIFAR-10 subset",
+      "code": "# Bonus: check if the mini-trained model from previous test achieved high accuracy\nassert _acc >= 0.35, f'Bonus: need >=35% on mini-test, got {_acc:.2%}'\nprint(f'BONUS: CIFAR-10 mini-test accuracy {_acc:.2%} exceeds 35%!')"
     }
   ]
 }
