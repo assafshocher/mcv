@@ -4,9 +4,9 @@
     "model_defined": "PASS",
     "model_output_shape": "PASS",
     "dataset_defined": "PASS",
-    "dataset_shapes": "FAIL: HR height 32 should be 2x LR height 32",
-    "train_runs": "FAIL: stack expects each tensor to be equal size, but got [1, 22, 32] at entry 0 and [1, 0, 32] at entry 1",
-    "psnr_improves": "FAIL: stack expects each tensor to be equal size, but got [1, 26, 7] at entry 0 and [1, 54, 41] at entry 1",
+    "dataset_shapes": "FAIL: HR height 32 should be 2x LR height 0",
+    "train_runs": "FAIL: stack expects each tensor to be equal size, but got [3, 32, 32] at entry 0 and [3, 0, 32] at entry 1",
+    "psnr_improves": "FAIL: stack expects each tensor to be equal size, but got [3, 0, 64] at entry 0 and [3, 64, 64] at entry 3",
     "evaluate_function": "PASS",
     "visualization": "PASS",
     "augmentation_bonus": "FAIL: Bonus not implemented"

@@ -595,6 +595,14 @@ def run_grand_test(targets=None, skip_generate=False, skip_execute=False, fast=F
                     print(f" FAILED ({time.time()-nb_start:.1f}s): {e}")
             print(f"    Execution total: {time.time()-exec_start:.1f}s")
 
+            # Copy executed notebooks (with outputs) back to original mock dir
+            orig_mock_dir = GRADING_DIR / hw / f"mock_submissions_{typ}"
+            if orig_mock_dir.exists() and mock_dir != orig_mock_dir:
+                for nb_path in all_nbs:
+                    dest = orig_mock_dir / nb_path.name
+                    if dest.exists():
+                        shutil.copy2(str(nb_path), str(dest))
+
         # Grade
         print(f"\n  Step 3: Grading...")
         grade_start = time.time()
