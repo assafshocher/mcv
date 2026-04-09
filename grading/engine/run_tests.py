@@ -426,6 +426,12 @@ def grade_notebook(nb_path: Path, spec: dict, output_dir: Path,
         if src.exists():
             shutil.copy2(str(src), str(work_dir / fname))
 
+    # Copy Python modules from submission directory (e.g., utils.py)
+    for py_file in nb_path.parent.glob("*.py"):
+        dest = work_dir / py_file.name
+        if not dest.exists():
+            shutil.copy2(str(py_file), str(dest))
+
     # Symlink data directory if provided (for MNIST, CIFAR, etc.)
     if data_dir:
         data_src = Path(data_dir)
@@ -694,6 +700,8 @@ def build_graded_notebook(nb_path: Path, results: dict, spec: dict, grades_row: 
             pts_str = f"{pts} (bonus)" if is_bonus else str(pts)
             if result == "PASS":
                 status = "✓ PASS"
+            elif isinstance(result, str) and result.startswith("BONUS:"):
+                status = f"✓ {awarded}/{pts} pts"
             elif result == "MANUAL":
                 status = "⏭ Manual"
             elif result.startswith("FAIL"):
@@ -730,7 +738,7 @@ def build_graded_notebook(nb_path: Path, results: dict, spec: dict, grades_row: 
     for test_info in _iter_tests(spec):
         tname = test_info["name"]
         result = tests.get(tname, "NOT_RUN")
-        if result not in ("PASS", "MANUAL", "NOT_RUN"):
+        if result not in ("PASS", "MANUAL", "NOT_RUN") and not (isinstance(result, str) and result.startswith("BONUS:")):
             fail_msg = result.replace("FAIL: ", "") if result.startswith("FAIL:") else result
             detail = [
                 f"### `{tname}` — FAIL",

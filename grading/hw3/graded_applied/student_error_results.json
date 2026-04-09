@@ -1,0 +1,15 @@
+{
+  "student_id": "error_student",
+  "tests": {
+    "model_check": "PASS",
+    "sr_image_1": "BONUS: 20",
+    "sr_image_2": "BONUS: 20",
+    "psnr_excellence": "FAIL: No successful PSNR improvements"
+  },
+  "timing": {},
+  "source": {},
+  "visual_files": {},
+  "test_cell_images": [],
+  "test_cell_html": [],
+  "file": "student_error.ipynb"
+}

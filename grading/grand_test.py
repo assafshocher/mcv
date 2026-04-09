@@ -66,7 +66,7 @@ EXPECTED_PERFECT_GRADE = {
     ("hw2", "scratch"): 100,
     ("hw2", "applied"): 100,
     ("hw3", "scratch"): 100,
-    ("hw3", "applied"): 100,
+    ("hw3", "applied"): 85,  # Continuous PSNR scoring; mock typically gets 85-95
 }
 
 
@@ -223,7 +223,163 @@ MOCK_IMPLEMENTATIONS[("hw1", "applied", "error")] = dict(
 # Use existing mocks
 
 # --- HW3 Applied ---
-# Use existing mocks
+MOCK_IMPLEMENTATIONS[("hw3", "applied", "perfect")] = {
+    "class ZSSRNet": '''class ZSSRNet(nn.Module):
+    """ZSSR Network: bicubic upsample + residual CNN refinement."""
+    def __init__(self, in_channels=3, n_channels=64, n_layers=8, kernel_size=3):
+        super().__init__()
+        padding = kernel_size // 2
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Conv2d(in_channels, n_channels, kernel_size, padding=padding))
+        for _ in range(n_layers - 2):
+            self.layers.append(nn.Conv2d(n_channels, n_channels, kernel_size, padding=padding))
+        self.layers.append(nn.Conv2d(n_channels, in_channels, kernel_size, padding=padding))
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x, scale_factor=2, target_size=None):
+        squeeze = False
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
+            squeeze = True
+        if target_size is None:
+            target_size = (x.shape[-2] * scale_factor, x.shape[-1] * scale_factor)
+        upscaled = resize_bicubic(x, size=target_size)
+        residual = upscaled.clone()
+        out = upscaled
+        for i, layer in enumerate(self.layers):
+            out = layer(out)
+            if i < len(self.layers) - 1:
+                out = self.relu(out)
+        out = out + residual
+        if squeeze:
+            out = out.squeeze(0)
+        return out''',
+
+    "def train_and_evaluate": '''def train_and_evaluate(image_lr, scale_factor=4, device='cpu'):
+    """Train ZSSR on a single LR image, return super-resolved result."""
+    model = ZSSRNet(in_channels=3).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+    criterion = nn.L1Loss()
+
+    h, w = image_lr.shape[-2], image_lr.shape[-1]
+    crop_size = min(64, h, w)
+
+    model.train()
+    for epoch in range(200):
+        # Batch: multiple random crops per epoch
+        fathers = []
+        sons = []
+        for _ in range(8):
+            ch = min(crop_size, h)
+            cw = min(crop_size, w)
+            top = np.random.randint(0, max(1, h - ch + 1))
+            left = np.random.randint(0, max(1, w - cw + 1))
+            father = image_lr[:, top:top+ch, left:left+cw]
+
+            # Random augmentation: rotation + flip
+            k = np.random.randint(0, 4)
+            father = torch.rot90(father, k=k, dims=[-2, -1])
+            if np.random.random() > 0.5:
+                father = torch.flip(father, dims=[-1])
+
+            son = resize_bicubic(father, scale_factor=1.0/scale_factor)
+            fathers.append(father)
+            sons.append(son)
+
+        # Stack and train
+        hr_batch = torch.stack(fathers).to(device)
+        lr_batch = torch.stack(sons).to(device)
+
+        optimizer.zero_grad()
+        target_h, target_w = hr_batch.shape[-2], hr_batch.shape[-1]
+        pred = model(lr_batch, scale_factor=scale_factor, target_size=(target_h, target_w))
+        loss = criterion(pred, hr_batch)
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+
+    # Inference on full image
+    model.eval()
+    with torch.no_grad():
+        sr = model(image_lr.unsqueeze(0).to(device), scale_factor=scale_factor)
+        sr = sr.squeeze(0).cpu()
+        sr = torch.clamp(sr, 0, 1)
+    return sr''',
+}
+
+MOCK_IMPLEMENTATIONS[("hw3", "applied", "error")] = {
+    # No residual connection — will train but poor PSNR
+    "class ZSSRNet": '''class ZSSRNet(nn.Module):
+    """ZSSR Network — BUG: missing residual connection."""
+    def __init__(self, in_channels=3, n_channels=64, n_layers=8, kernel_size=3):
+        super().__init__()
+        padding = kernel_size // 2
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Conv2d(in_channels, n_channels, kernel_size, padding=padding))
+        for _ in range(n_layers - 2):
+            self.layers.append(nn.Conv2d(n_channels, n_channels, kernel_size, padding=padding))
+        self.layers.append(nn.Conv2d(n_channels, in_channels, kernel_size, padding=padding))
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x, scale_factor=2, target_size=None):
+        squeeze = False
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
+            squeeze = True
+        if target_size is None:
+            target_size = (x.shape[-2] * scale_factor, x.shape[-1] * scale_factor)
+        upscaled = resize_bicubic(x, size=target_size)
+        out = upscaled
+        for i, layer in enumerate(self.layers):
+            out = layer(out)
+            if i < len(self.layers) - 1:
+                out = self.relu(out)
+        # BUG: no residual connection
+        if squeeze:
+            out = out.squeeze(0)
+        return out''',
+
+    "def train_and_evaluate": '''def train_and_evaluate(image_lr, scale_factor=4, device='cpu'):
+    """Train ZSSR — basic implementation without improvements."""
+    model = ZSSRNet(in_channels=3).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    criterion = nn.L1Loss()
+
+    h, w = image_lr.shape[-2], image_lr.shape[-1]
+    crop_size = min(64, h, w)
+
+    model.train()
+    for epoch in range(100):
+        fathers = []
+        sons = []
+        for _ in range(4):
+            ch = min(crop_size, h)
+            cw = min(crop_size, w)
+            top = np.random.randint(0, max(1, h - ch + 1))
+            left = np.random.randint(0, max(1, w - cw + 1))
+            father = image_lr[:, top:top+ch, left:left+cw]
+            son = resize_bicubic(father, scale_factor=1.0/scale_factor)
+            fathers.append(father)
+            sons.append(son)
+
+        hr_batch = torch.stack(fathers).to(device)
+        lr_batch = torch.stack(sons).to(device)
+
+        optimizer.zero_grad()
+        target_h, target_w = hr_batch.shape[-2], hr_batch.shape[-1]
+        pred = model(lr_batch, scale_factor=scale_factor, target_size=(target_h, target_w))
+        loss = criterion(pred, hr_batch)
+        loss.backward()
+        optimizer.step()
+
+    model.eval()
+    with torch.no_grad():
+        sr = model(image_lr.unsqueeze(0).to(device), scale_factor=scale_factor)
+        sr = sr.squeeze(0).cpu()
+        sr = torch.clamp(sr, 0, 1)
+    return sr''',
+}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -570,11 +726,11 @@ def run_grand_test(targets=None, skip_generate=False, skip_execute=False, fast=F
                 if src.exists():
                     shutil.copy2(str(src), str(mock_dir / fname))
 
-            # Copy support files from template dir (images, data files etc.)
+            # Copy support files from template dir (images, data, Python modules etc.)
             template_dir = template_path.parent
             for f in template_dir.iterdir():
                 if f.suffix.lower() in ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff',
-                                         '.npy', '.pt', '.pth', '.csv', '.txt'):
+                                         '.npy', '.pt', '.pth', '.csv', '.txt', '.py'):
                     dest = mock_dir / f.name
                     if not dest.exists():
                         shutil.copy2(str(f), str(dest))

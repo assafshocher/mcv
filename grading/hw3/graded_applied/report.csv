@@ -1,3 +1,3 @@
-student_id,file,model_defined,model_output_shape,dataset_defined,dataset_shapes,train_runs,psnr_improves,psnr_quality_bonus,evaluate_function,visualization,augmentation_bonus,total_grade,bonus
-MISSING,student_perfect.ipynb,5,15,10,5,15,25,5,10,15,15,100,20
-MISSING,student_bad_dataset.ipynb,5,15,10,0,0,0,0,10,15,0,55,0
+student_id,file,model_check,sr_image_1,sr_image_2,psnr_excellence,total_grade,bonus
+perfect_student,student_perfect.ipynb,10,37,45,7,92,7
+error_student,student_error.ipynb,10,20,20,0,50,0
