@@ -1,7 +1,7 @@
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.85in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{enumitem}
 \usepackage{fancyhdr}
@@ -25,23 +25,18 @@
   \textcolor{gray}{Due: April 26, 2026}
 \end{center}
 
-\vspace{6pt}
+\vspace{4pt}
 
 \noindent
-Recall the definition of continuous convolution:
-\[
-(f \conv g)(t) \;=\; \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau
-\]
+Recall: $(f \conv g)(t) = \int_{-\infty}^{\infty} f(\tau)\, g(t - \tau)\, d\tau$.
+\;A system $T$ is \textbf{LTI} (linear time-invariant) if
+$T\{\alpha f + \beta g\} = \alpha\, T\{f\} + \beta\, T\{g\}$ and
+$T\{f(t-t_0)\} = (Tf)(t-t_0)$.
 
-\noindent
-A system $T$ is \textbf{linear} if $T\{\alpha f + \beta g\} = \alpha\, T\{f\} + \beta\, T\{g\}$.\\
-A system $T$ is \textbf{time-invariant} if $T\{f(t-t_0)\} = (Tf)(t-t_0)$.\\
-A system that is both is called \textbf{LTI}.
-
-\vspace{14pt}
+\vspace{8pt}
 \noindent\textbf{Prove:}
 
-\begin{enumerate}[leftmargin=2em, itemsep=10pt]
+\begin{enumerate}[leftmargin=2em, itemsep=6pt]
 
   \item \textbf{Convolution is commutative:}\quad $f \conv g \;=\; g \conv f$
 
@@ -54,18 +49,6 @@ A system that is both is called \textbf{LTI}.
   \item \textbf{Convolution commutes with differentiation:}
   \[\frac{d}{dt}(f \conv g) \;=\; \frac{df}{dt} \conv g \;=\; f \conv \frac{dg}{dt}\]
 
-  \item \textbf{Support adds:}\quad $\supp(f \conv g) \;\subseteq\; \supp(f) + \supp(g)$
-
-  The \emph{support} of $f$, written $\supp(f)$, is the closure of the set where $f$ is nonzero
-  (i.e., where $f$ ``lives,'' including the boundary).
-  The $+$ between two sets is the \emph{Minkowski sum}: $A + B = \{a + b : a \in A,\; b \in B\}$.
-
-  In plain words: if $f$ lives on some interval and $g$ lives on some interval,
-  show that $f \conv g$ can only be nonzero on an interval whose length is at most
-  the sum of those two lengths.
-
-  \textcolor{gray}{\small [Hint: when is the integrand nonzero?]}
-
   \item \textbf{A system is LTI if and only if it can be expressed by a convolution:}\quad $T$ is LTI $\Leftrightarrow$ $T\{f\} = f \conv h$ for some kernel $h$.
 
   \textcolor{gray}{\small [Hint: $\Leftarrow$ is easy.\; $\Rightarrow$\, express $f$ using $\delta$]}
@@ -74,6 +57,39 @@ A system that is both is called \textbf{LTI}.
   \[ g_{\sigma_1} \conv g_{\sigma_2} \;=\; g_{\sqrt{\sigma_1^2 + \sigma_2^2}} \,,\quad \text{where}\quad g_\sigma(t) = \tfrac{1}{\sigma\sqrt{2\pi}}\exp\!\left(-\tfrac{t^2}{2\sigma^2}\right) \]
 
   \textcolor{gray}{\small [Hint: complete the square]}
+
+  \item \textbf{Repeated convolution converges to a Gaussian.}
+
+  Let $X_1, X_2$ be two independent random variables with PDFs $f_1, f_2$.
+  Define $S_2 = X_1 + X_2$.
+
+  \begin{enumerate}[label=(\alph*), itemsep=4pt]
+
+    \item Write down the joint PDF of $(X_1, X_2)$.
+    What does independence let you do?
+
+    \item Express the CDF $F_{S_2}(s) = P(S_2 \le s)$ as a double integral
+    over the region $\{x_1 + x_2 \le s\}$, using the joint PDF from~(a).
+
+    \item Differentiate $F_{S_2}(s)$ with respect to $s$ to obtain the PDF $f_{S_2}(s)$.
+    What familiar operation appears?
+
+    \item Now let $X_1, \ldots, X_n$ be IID with PDF $f$, mean $\mu$,
+    and finite variance $\sigma^2$. Let $S_n = X_1 + \cdots + X_n$.
+    Use the result from~(c) to express $f_{S_n}$ in terms of $f$.
+
+    \item State the Central Limit Theorem (CLT) for $S_n$.
+    What does it say about $f_{S_n}$ for large $n$?
+
+    \textcolor{gray}{\small
+    Recall: the CLT states that $(S_n - n\mu)/(\sigma\sqrt{n}) \to \mathcal{N}(0,1)$
+    in distribution as $n \to \infty$.
+    See e.g.\ \texttt{en.wikipedia.org/wiki/Central\_limit\_theorem}.}
+
+    \item Combine (d) and (e): what does this tell you about
+    repeatedly convolving a nonnegative, normalized function with itself?
+
+  \end{enumerate}
 
 \end{enumerate}
 
