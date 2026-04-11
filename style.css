@@ -667,6 +667,14 @@ nav {
   color: var(--accent);
   text-decoration: none;
   font-size: 0.84rem;
+  display: inline-block;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+.resource-link + br + .resource-link {
+  border-top: 1px solid #e8e8e8;
+  margin-top: 2px;
+  padding-top: 4px;
 }
 
 .resource-link:hover { text-decoration: underline; }
