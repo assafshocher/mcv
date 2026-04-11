@@ -1,3 +1,0 @@
-student_id,file,linear_forward,linear_backward_x,linear_backward_w,linear_backward_b,relu_forward,relu_backward,ce_forward,ce_backward,linear_layer,softmax_classifier,mlp_model,sgd_step,sgd_zero_grad,train_epoch_runs,mnist_accuracy,mnist_bonus,total_grade,bonus
-PERFECT_201,student_perfect.ipynb,5,5,5,5,5,10,10,10,5,5,5,5,5,5,15,0,100,0
-NOBIAS_202,student_no_bias.ipynb,5,5,5,0,5,10,10,10,5,5,5,5,5,5,15,0,95,0

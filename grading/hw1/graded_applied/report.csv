@@ -1,3 +1,0 @@
-student_id,file,compute_energy,find_seam,remove_seam,seam_carve,total_grade
-perfect_student,student_perfect.ipynb,25,30,20,25,100
-error_student,student_error.ipynb,25,21,20,13,79

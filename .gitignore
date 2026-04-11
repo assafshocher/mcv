@@ -22,14 +22,8 @@ zi*
 *~
 *.swp
 
-# Data files (too large for git)
-grading/data/
-grading/*/mock_submissions_*/data
-grading/*/mock_submissions_scratch/data
-grading/*/_grand_test_*/
-
-# Grading work directories (temp)
-grading/*/graded_*/_work_*/
+# Grading (private, not for students)
+grading/
 
 # Old kit directories (superseded by grading/)
 hw2_grading_kit/
