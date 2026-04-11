@@ -75,52 +75,6 @@ A system that is both is called \textbf{LTI}.
 
   \textcolor{gray}{\small [Hint: complete the square]}
 
-  \item \textbf{Repeated convolution converges to a Gaussian.}
-
-  In this problem you will show that convolving \emph{any} reasonable filter
-  with itself many times produces a Gaussian---a deep connection between
-  convolution and the Central Limit Theorem.
-
-  \begin{enumerate}[label=(\alph*), itemsep=6pt]
-
-    \item Consider two \textbf{independent} random variables $X_1, X_2$ with
-    PDFs $f_1(x), f_2(x)$.
-    Write down the joint PDF $q(x_1, x_2)$ of $(X_1, X_2)$.
-    What does independence let you do here?
-
-    \item Let $Y = X_1 + X_2$.
-    Express the CDF $F_Y(y) = P(Y \le y)$ as a 2-D integral over the
-    region $\{x_1 + x_2 \le y\}$.
-
-    \textcolor{gray}{\small [Hint: set up the limits: $x_1$ from $-\infty$ to $\infty$,
-    $x_2$ from $-\infty$ to $y - x_1$.]}
-
-    \item Differentiate $F_Y(y)$ with respect to $y$ to obtain the PDF
-    $f_Y(y)$. What familiar operation appears?
-
-    \item Now consider $n$ \textbf{i.i.d.}\ random variables $X_1, \ldots, X_n$,
-    each with PDF $f$, mean $\mu$, and finite variance $\sigma^2$.
-    Let $S_n = X_1 + \cdots + X_n$.
-    Use the result from~(c) to express the PDF of $S_n$ in terms of~$f$.
-
-    \item State the Central Limit Theorem for $S_n$.
-    What does it say about $f_{S_n}$ for large~$n$?
-
-    \item Combine (d) and (e): what does this imply about repeatedly
-    convolving a nonnegative, normalized function with itself?
-
-    \textcolor{gray}{\small [This is the punchline: the $n$-fold self-convolution
-    of any such function converges to a Gaussian, with variance growing
-    linearly in~$n$.]}
-
-    \item \textbf{(Optional---numerical verification.)}
-    Take the box filter $h = [\tfrac{1}{3},\, \tfrac{1}{3},\, \tfrac{1}{3}]$
-    and convolve it with itself 30 times numerically.
-    Plot the result and overlay a Gaussian with the predicted variance.
-    Does it match?
-
-  \end{enumerate}
-
 \end{enumerate}
 
 \vfill
