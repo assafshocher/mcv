@@ -18,8 +18,8 @@
       "vec_is_conv_not_xcorr": "PASS"
     },
     "timing": {
-      "loops_64": 12.6,
-      "vec_256": 181.8
+      "loops_64": 13.9,
+      "vec_256": 194.7
     },
     "source": {
       "conv2d_loops": "def conv2d_loops(image, kernel):\n    \"\"\"2D convolution \u2014 BUG: no kernel flip (cross-correlation).\"\"\"\n    H, W = image.shape\n    kH, kW = kernel.shape\n    H_out, W_out = H - kH + 1, W - kW + 1\n    output = torch.zeros(H_out, W_out)\n    for i in range(H_out):\n        for j in range(W_out):\n            output[i, j] = (image[i:i+kH, j:j+kW] * kernel).sum()\n    return output\n",
@@ -50,8 +50,8 @@
       "vec_is_conv_not_xcorr": "PASS"
     },
     "timing": {
-      "loops_64": 13.0,
-      "vec_256": 173.8
+      "loops_64": 12.7,
+      "vec_256": 180.9
     },
     "source": {
       "conv2d_loops": "def conv2d_loops(image, kernel):\n    \"\"\"2D convolution using for loops with kernel flipping. Valid mode (no padding).\"\"\"\n    H, W = image.shape\n    kH, kW = kernel.shape\n    H_out, W_out = H - kH + 1, W - kW + 1\n    kernel_flipped = kernel.flip(0).flip(1)\n    output = torch.zeros(H_out, W_out)\n    for i in range(H_out):\n        for j in range(W_out):\n            output[i, j] = (image[i:i+kH, j:j+kW] * kernel_flipped).sum()\n    return output\n",

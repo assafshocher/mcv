@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-04-09 14:59:55",
-  "elapsed_seconds": 112,
+  "timestamp": "2026-04-09 20:38:12",
+  "elapsed_seconds": 157,
   "timing_per_assignment": {
-    "hw3_applied": 112.3
+    "hw3_applied": 157.4
   },
   "results": {
     "hw3_applied": {
@@ -10,17 +10,17 @@
       "grades": [
         {
           "student": "error_student",
-          "total": 50,
+          "total": 0,
           "bonus": 0,
-          "tests_passed": 3,
-          "tests_total": 4
+          "tests_passed": 2,
+          "tests_total": 3
         },
         {
           "student": "perfect_student",
-          "total": 92,
-          "bonus": 7,
-          "tests_passed": 4,
-          "tests_total": 4
+          "total": 50,
+          "bonus": 0,
+          "tests_passed": 3,
+          "tests_total": 3
         }
       ]
     }

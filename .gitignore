@@ -39,5 +39,8 @@ mcv_hw_grading_and_testing_kit/
 # Local website copy (root-level files are canonical)
 mcv-website-clean/
 
+# Slide source files (too large, keep .pptx local)
+slides/
+
 # Claude settings
 .claude/

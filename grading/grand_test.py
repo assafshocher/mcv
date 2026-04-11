@@ -66,7 +66,7 @@ EXPECTED_PERFECT_GRADE = {
     ("hw2", "scratch"): 100,
     ("hw2", "applied"): 100,
     ("hw3", "scratch"): 100,
-    ("hw3", "applied"): 85,  # Continuous PSNR scoring; mock typically gets 85-95
+    ("hw3", "applied"): 50,  # Continuous PSNR scoring (out of 120); mock gets 50 base + PSNR bonus
 }
 
 

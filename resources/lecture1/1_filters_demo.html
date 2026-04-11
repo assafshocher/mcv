@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convolution Filter Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    padding: 20px;
+  }
+  h1 { font-size: 28px; margin-bottom: 4px; }
+  .subtitle { color: #86868b; font-size: 14px; margin-bottom: 20px; }
+
+  .layout {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  /* Left panel: kernel + presets */
+  .controls {
+    flex: 0 0 320px;
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .controls h2 { font-size: 18px; margin-bottom: 12px; }
+
+  .kernel-grid {
+    display: inline-grid;
+    gap: 3px;
+    margin-bottom: 8px;
+  }
+  .kernel-grid input {
+    width: 52px;
+    height: 42px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fafafa;
+  }
+  .kernel-grid input:focus {
+    border-color: #0071e3;
+    background: #fff;
+  }
+  .kernel-grid input.negative { background: #fff0f0; border-color: #e8c0c0; }
+  .kernel-grid input.positive { background: #f0fff0; border-color: #c0e8c0; }
+  .kernel-grid input.zero { background: #f5f5f5; border-color: #e0e0e0; color: #aaa; }
+
+  .kernel-info {
+    font-size: 13px;
+    color: #86868b;
+    margin-bottom: 16px;
+    min-height: 20px;
+  }
+
+  .size-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .size-toggle button {
+    padding: 6px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .size-toggle button.active {
+    border-color: #0071e3;
+    background: #eef4ff;
+    color: #0071e3;
+  }
+
+  .norm-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  .norm-row input[type=checkbox] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .presets { margin-bottom: 16px; }
+  .presets h3 { font-size: 14px; color: #86868b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .preset-group { margin-bottom: 10px; }
+  .preset-group .group-label {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .preset-btn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 2px 4px 2px 0;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 20px;
+    background: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: #0071e3; color: #0071e3; background: #f0f4ff; }
+  .preset-btn.active { border-color: #0071e3; color: white; background: #0071e3; }
+
+  .image-upload {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e8e8e8;
+  }
+  .image-upload label {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #0071e3;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .image-upload input { display: none; }
+
+  /* Right panel: images */
+  .images {
+    flex: 1;
+    min-width: 400px;
+  }
+  .image-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .image-box {
+    flex: 1;
+    min-width: 300px;
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .image-box h3 {
+    font-size: 15px;
+    margin-bottom: 10px;
+    color: #555;
+  }
+  .image-box canvas {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    background: #f0f0f0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Interactive Convolution Demo</h1>
+<p class="subtitle">Edit kernel values or pick a preset — result updates live</p>
+
+<div class="layout">
+  <div class="controls">
+    <h2>Kernel</h2>
+
+    <div class="size-toggle">
+      <button id="size3" onclick="setSize(3)">3 &times; 3</button>
+      <button id="size5" class="active" onclick="setSize(5)">5 &times; 5</button>
+    </div>
+
+    <div class="kernel-grid" id="kernelGrid"></div>
+    <div class="kernel-info" id="kernelInfo">Sum: 1</div>
+
+    <div class="norm-row">
+      <input type="checkbox" id="normalizeChk">
+      <label for="normalizeChk">Normalize (divide by sum)</label>
+    </div>
+
+    <div class="presets">
+      <h3>Presets</h3>
+
+      <div class="preset-group">
+        <div class="group-label">Smoothing</div>
+        <button class="preset-btn" onclick="loadPreset('identity')">Identity</button>
+        <button class="preset-btn" onclick="loadPreset('box3')">Box 3&times;3</button>
+        <button class="preset-btn" onclick="loadPreset('box5')">Box 5&times;5</button>
+        <button class="preset-btn" onclick="loadPreset('gauss3')">Gaussian 3&times;3</button>
+        <button class="preset-btn" onclick="loadPreset('gauss5')">Gaussian 5&times;5</button>
+      </div>
+
+      <div class="preset-group">
+        <div class="group-label">Derivatives</div>
+        <button class="preset-btn" onclick="loadPreset('dx')">∂/∂x</button>
+        <button class="preset-btn" onclick="loadPreset('dy')">∂/∂y</button>
+        <button class="preset-btn" onclick="loadPreset('sobelx')">Sobel X</button>
+        <button class="preset-btn" onclick="loadPreset('sobely')">Sobel Y</button>
+      </div>
+
+      <div class="preset-group">
+        <div class="group-label">2nd Order / Enhancement</div>
+        <button class="preset-btn" onclick="loadPreset('laplacian')">Laplacian</button>
+        <button class="preset-btn" onclick="loadPreset('sharpen')">Sharpening</button>
+        <button class="preset-btn" onclick="loadPreset('emboss')">Emboss</button>
+      </div>
+    </div>
+
+    <div class="image-select">
+      <h3 style="font-size:14px; color:#86868b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Image</h3>
+      <select id="imgSelect" style="width:100%; padding:8px 12px; border:2px solid #e0e0e0; border-radius:8px; font-size:14px; background:white; cursor:pointer; margin-bottom:8px;">
+        <option value="1076">Building Facade (windows grid)</option>
+        <option value="1031">Glass Skyscraper</option>
+        <option value="1067">City Skyline</option>
+        <option value="164">Canal Houses</option>
+        <option value="36">Hardware Components</option>
+        <option value="452">Mountain Lake</option>
+        <option value="1074">Fire Escape Stairs</option>
+        <option value="655">Bookshelves</option>
+        <option value="custom">Upload custom...</option>
+      </select>
+      <input type="file" id="imgUpload" accept="image/*" style="display:none;">
+    </div>
+  </div>
+
+  <div class="images">
+    <div class="image-row">
+      <div class="image-box">
+        <h3>Original</h3>
+        <canvas id="canvasOrig"></canvas>
+      </div>
+      <div class="image-box">
+        <h3 id="resultTitle">Result</h3>
+        <canvas id="canvasResult"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- State ---
+let kernelSize = 5;
+let sourceImage = null;  // ImageData of loaded image
+let activePreset = null;
+
+// --- Presets ---
+const PRESETS = {
+  identity: { size: 3, values: [0,0,0, 0,1,0, 0,0,0], norm: false, name: 'Identity' },
+  box3:     { size: 3, values: [1,1,1, 1,1,1, 1,1,1], norm: true, name: 'Box Blur 3×3' },
+  box5:     { size: 5, values: [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1], norm: true, name: 'Box Blur 5×5' },
+  gauss3:   { size: 3, values: [1,2,1, 2,4,2, 1,2,1], norm: true, name: 'Gaussian 3×3' },
+  gauss5:   { size: 5, values: [1,4,6,4,1, 4,16,24,16,4, 6,24,36,24,6, 4,16,24,16,4, 1,4,6,4,1], norm: true, name: 'Gaussian 5×5' },
+  dx:       { size: 3, values: [0,0,0, -1,1,0, 0,0,0], norm: false, name: '∂/∂x Derivative' },
+  dy:       { size: 3, values: [0,-1,0, 0,1,0, 0,0,0], norm: false, name: '∂/∂y Derivative' },
+  sobelx:   { size: 3, values: [-1,0,1, -2,0,2, -1,0,1], norm: false, name: 'Sobel X' },
+  sobely:   { size: 3, values: [-1,-2,-1, 0,0,0, 1,2,1], norm: false, name: 'Sobel Y' },
+  laplacian:{ size: 3, values: [0,1,0, 1,-4,1, 0,1,0], norm: false, name: 'Laplacian' },
+  sharpen:  { size: 3, values: [0,-1,0, -1,5,-1, 0,-1,0], norm: false, name: 'Sharpening' },
+  emboss:   { size: 3, values: [-2,-1,0, -1,1,1, 0,1,2], norm: false, name: 'Emboss' },
+};
+
+// --- Kernel grid ---
+function buildGrid() {
+  const grid = document.getElementById('kernelGrid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${kernelSize}, 52px)`;
+  for (let i = 0; i < kernelSize * kernelSize; i++) {
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.step = 'any';
+    inp.value = (i === Math.floor(kernelSize*kernelSize/2)) ? '1' : '0';
+    inp.addEventListener('input', () => { activePreset = null; updatePresetButtons(); onKernelChange(); });
+    inp.addEventListener('focus', e => e.target.select());
+    grid.appendChild(inp);
+  }
+  colorCells();
+  updateInfo();
+}
+
+function getKernelValues() {
+  const inputs = document.querySelectorAll('#kernelGrid input');
+  return Array.from(inputs).map(inp => parseFloat(inp.value) || 0);
+}
+
+function setKernelValues(values) {
+  const inputs = document.querySelectorAll('#kernelGrid input');
+  values.forEach((v, i) => { if (inputs[i]) inputs[i].value = v; });
+  colorCells();
+  updateInfo();
+}
+
+function colorCells() {
+  const inputs = document.querySelectorAll('#kernelGrid input');
+  inputs.forEach(inp => {
+    const v = parseFloat(inp.value) || 0;
+    inp.classList.remove('negative', 'positive', 'zero');
+    if (v < 0) inp.classList.add('negative');
+    else if (v > 0) inp.classList.add('positive');
+    else inp.classList.add('zero');
+  });
+}
+
+function updateInfo() {
+  const vals = getKernelValues();
+  const sum = vals.reduce((a, b) => a + b, 0);
+  document.getElementById('kernelInfo').textContent = `Sum: ${Number.isInteger(sum) ? sum : sum.toFixed(4)}`;
+}
+
+function setSize(s) {
+  kernelSize = s;
+  document.getElementById('size3').classList.toggle('active', s === 3);
+  document.getElementById('size5').classList.toggle('active', s === 5);
+  buildGrid();
+  applyConvolution();
+}
+
+// --- Presets ---
+function loadPreset(key) {
+  const p = PRESETS[key];
+  activePreset = key;
+
+  // Switch size if needed
+  if (p.size !== kernelSize) setSize(p.size);
+
+  // Pad 3x3 preset into 5x5 if current size is 5
+  if (p.size === 3 && kernelSize === 5) {
+    const padded = new Array(25).fill(0);
+    for (let r = 0; r < 3; r++)
+      for (let c = 0; c < 3; c++)
+        padded[(r+1)*5 + (c+1)] = p.values[r*3+c];
+    setKernelValues(padded);
+  } else {
+    setKernelValues(p.values);
+  }
+
+  document.getElementById('normalizeChk').checked = p.norm;
+  updatePresetButtons();
+  applyConvolution();
+}
+
+function updatePresetButtons() {
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    const key = btn.getAttribute('onclick').match(/'(\w+)'/)[1];
+    btn.classList.toggle('active', key === activePreset);
+  });
+}
+
+// --- Image loading ---
+function loadImageFromId(pid) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => setSourceImage(img);
+  img.onerror = () => console.error('Failed to load image', pid);
+  img.src = `https://picsum.photos/id/${pid}/512/512`;
+}
+
+function loadDefaultImage() {
+  loadImageFromId('1076');
+}
+
+document.getElementById('imgSelect').addEventListener('change', e => {
+  const val = e.target.value;
+  if (val === 'custom') {
+    document.getElementById('imgUpload').click();
+  } else {
+    loadImageFromId(val);
+  }
+});
+
+function setSourceImage(img) {
+  const c = document.createElement('canvas');
+  // Limit size for performance
+  const maxDim = 512;
+  let w = img.naturalWidth || img.width;
+  let h = img.naturalHeight || img.height;
+  if (w > maxDim || h > maxDim) {
+    const scale = maxDim / Math.max(w, h);
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+  }
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  sourceImage = ctx.getImageData(0, 0, w, h);
+
+  // Draw original
+  const origCanvas = document.getElementById('canvasOrig');
+  origCanvas.width = w; origCanvas.height = h;
+  origCanvas.getContext('2d').putImageData(sourceImage, 0, 0);
+
+  // Set result canvas size
+  const resCanvas = document.getElementById('canvasResult');
+  resCanvas.width = w; resCanvas.height = h;
+
+  applyConvolution();
+}
+
+document.getElementById('imgUpload').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) { document.getElementById('imgSelect').value = '1076'; return; }
+  document.getElementById('imgSelect').value = 'custom';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => setSourceImage(img);
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('normalizeChk').addEventListener('change', () => applyConvolution());
+
+// --- Convolution ---
+function applyConvolution() {
+  if (!sourceImage) return;
+
+  const vals = getKernelValues();
+  const normalize = document.getElementById('normalizeChk').checked;
+  const kSize = kernelSize;
+  const kHalf = Math.floor(kSize / 2);
+
+  // Build normalized kernel
+  let kernel = vals.slice();
+  if (normalize) {
+    const sum = kernel.reduce((a, b) => a + b, 0);
+    if (Math.abs(sum) > 1e-10) {
+      kernel = kernel.map(v => v / sum);
+    }
+  }
+
+  const src = sourceImage;
+  const w = src.width, h = src.height;
+  const srcData = src.data;
+
+  const resultCanvas = document.getElementById('canvasResult');
+  resultCanvas.width = w; resultCanvas.height = h;
+  const ctx = resultCanvas.getContext('2d');
+  const result = ctx.createImageData(w, h);
+  const dst = result.data;
+
+  // Check if kernel sums to ~0 (derivative-like) — we'll map output to visible range
+  const kSum = kernel.reduce((a, b) => a + b, 0);
+  const isDerivative = Math.abs(kSum) < 0.01 && !normalize;
+
+  // Convolve each channel
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let ky = 0; ky < kSize; ky++) {
+        for (let kx = 0; kx < kSize; kx++) {
+          const sy = Math.min(h-1, Math.max(0, y + ky - kHalf));
+          const sx = Math.min(w-1, Math.max(0, x + kx - kHalf));
+          const si = (sy * w + sx) * 4;
+          const kv = kernel[ky * kSize + kx];
+          r += srcData[si]     * kv;
+          g += srcData[si + 1] * kv;
+          b += srcData[si + 2] * kv;
+        }
+      }
+
+      const di = (y * w + x) * 4;
+      if (isDerivative) {
+        // Map to visible: abs value, scale up
+        dst[di]     = Math.min(255, Math.abs(r));
+        dst[di + 1] = Math.min(255, Math.abs(g));
+        dst[di + 2] = Math.min(255, Math.abs(b));
+      } else {
+        dst[di]     = Math.min(255, Math.max(0, r));
+        dst[di + 1] = Math.min(255, Math.max(0, g));
+        dst[di + 2] = Math.min(255, Math.max(0, b));
+      }
+      dst[di + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(result, 0, 0);
+
+  // Update result title
+  const title = activePreset ? PRESETS[activePreset].name : 'Custom Kernel';
+  document.getElementById('resultTitle').textContent = `Result — ${title}`;
+}
+
+function onKernelChange() {
+  colorCells();
+  updateInfo();
+  applyConvolution();
+}
+
+// --- Init ---
+buildGrid();
+loadDefaultImage();
+loadPreset('identity');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1D Discrete Convolution</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08090e;color:#e0e0e8;font-family:'IBM Plex Sans',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+  .header{padding:10px 24px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(8,9,14,0.98);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .header-left h1{font-size:15px;font-weight:400;color:#8af}
+  .header-left .sub{font-size:10px;font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,0.3);margin-top:1px}
+  .top-controls{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+  .btn{padding:5px 10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.6);font-family:'IBM Plex Mono',monospace;font-size:10px;border-radius:4px;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:rgba(136,170,255,0.1);color:#8af}
+  .btn.active{background:rgba(136,170,255,0.12);border-color:rgba(136,170,255,0.35);color:#8af}
+  .btn.sig{border-color:rgba(100,160,255,0.3);color:rgba(130,180,255,0.7)}
+  .btn.sig:hover{background:rgba(100,160,255,0.1);color:rgba(150,200,255,0.9)}
+  .btn.ker{border-color:rgba(240,192,80,0.3);color:rgba(240,200,100,0.7)}
+  .btn.ker:hover{background:rgba(240,192,80,0.1);color:rgba(255,220,120,0.9)}
+  .ctrl-row{display:flex;align-items:center;gap:5px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,0.4)}
+  .ctrl-row input[type="range"]{width:60px;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;outline:none}
+  .ctrl-row input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:#8af;cursor:pointer;border:2px solid #08090e}
+  .cr{display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+  .cr input[type="checkbox"]{accent-color:#8af;width:12px;height:12px;cursor:pointer}
+  .cr span{font-size:10px;color:rgba(255,255,255,0.45)}
+  .sep{width:1px;height:18px;background:rgba(255,255,255,0.08);margin:0 2px}
+  .preset-group{display:flex;gap:3px;align-items:center}
+  .preset-label{font-size:9px;font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:0.5px}
+  .main{flex:1;overflow:hidden;position:relative}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas:active{cursor:grabbing}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>(x ∗ h)[n] = Σₖ x[k] · h[n−k]</h1>
+    <div class="sub">Drag dots to edit · Play to animate the kernel sliding</div>
+  </div>
+  <div class="top-controls">
+    <div class="preset-group">
+      <span class="preset-label">x:</span>
+      <div class="btn sig" onclick="presetSig('delta')">δ</div>
+      <div class="btn sig" onclick="presetSig('step')">step</div>
+      <div class="btn sig" onclick="presetSig('pulse')">pulse</div>
+      <div class="btn sig" onclick="presetSig('ramp')">ramp</div>
+      <div class="btn sig" onclick="presetSig('sine')">sine</div>
+      <div class="btn sig" onclick="presetSig('random')">rand</div>
+    </div>
+    <div class="sep"></div>
+    <div class="preset-group">
+      <span class="preset-label">h:</span>
+      <div class="btn ker" onclick="presetKer('delta')">δ</div>
+      <div class="btn ker" onclick="presetKer('box')">box</div>
+      <div class="btn ker" onclick="presetKer('gauss')">gauss</div>
+      <div class="btn ker" onclick="presetKer('edge')">edge</div>
+      <div class="btn ker" onclick="presetKer('sharpen')">sharp</div>
+      <div class="btn ker" onclick="presetKer('diff')">d/dx</div>
+    </div>
+    <div class="sep"></div>
+    <div class="ctrl-row"><span>Speed</span><input type="range" id="speedSlider" min="1" max="50" value="12"></div>
+    <div class="btn active" id="btnPlay" onclick="togglePlay()">▶</div>
+    <div class="btn" onclick="stepBack()">◀</div>
+    <div class="btn" onclick="stepFwd()">▶</div>
+    <div class="btn" onclick="resetAnim()">↺</div>
+    <label class="cr"><input type="checkbox" id="chkShowAll"><span>Show all</span></label>
+    <label class="cr"><input type="checkbox" id="chkCyclic"><span>Cyclic</span></label>
+  </div>
+</div>
+<div class="main">
+  <canvas id="C"></canvas>
+</div>
+<script>
+const C=document.getElementById('C'),X=C.getContext('2d');
+const $=id=>document.getElementById(id);
+
+const SIG_LEN=15,KER_LEN=5;
+let signal=new Array(SIG_LEN).fill(0);
+let kernel=new Array(KER_LEN).fill(0);
+let result=[];
+
+// Default
+function initDefault(){
+  signal.fill(0);
+  signal[3]=0.3;signal[4]=0.7;signal[5]=1.0;signal[6]=1.0;signal[7]=0.8;signal[8]=0.5;signal[9]=0.2;
+  signal[11]=0.6;signal[12]=0.4;
+  kernel[0]=0.15;kernel[1]=0.5;kernel[2]=1.0;kernel[3]=0.5;kernel[4]=0.15;
+}
+initDefault();
+
+// Presets
+function presetSig(type){
+  signal.fill(0);
+  switch(type){
+    case'delta':signal[Math.floor(SIG_LEN/2)]=1;break;
+    case'step':for(let i=Math.floor(SIG_LEN/3);i<SIG_LEN;i++)signal[i]=1;break;
+    case'pulse':for(let i=4;i<=9;i++)signal[i]=1;break;
+    case'ramp':for(let i=0;i<SIG_LEN;i++)signal[i]=i/(SIG_LEN-1);break;
+    case'sine':for(let i=0;i<SIG_LEN;i++)signal[i]=Math.sin(2*Math.PI*i/SIG_LEN*2)*0.8;break;
+    case'random':for(let i=0;i<SIG_LEN;i++)signal[i]=Math.random()*1.6-0.3;break;
+  }
+  computeResult();
+}
+function presetKer(type){
+  kernel.fill(0);
+  switch(type){
+    case'delta':kernel[Math.floor(KER_LEN/2)]=1;break;
+    case'box':kernel.fill(1/KER_LEN);break;
+    case'gauss':kernel[0]=0.06;kernel[1]=0.24;kernel[2]=0.4;kernel[3]=0.24;kernel[4]=0.06;break;
+    case'edge':kernel[0]=-1;kernel[1]=-1;kernel[2]=0;kernel[3]=1;kernel[4]=1;break;
+    case'sharpen':kernel[0]=-0.15;kernel[1]=-0.35;kernel[2]=2.0;kernel[3]=-0.35;kernel[4]=-0.15;break;
+    case'diff':kernel[0]=0;kernel[1]=-0.5;kernel[2]=0;kernel[3]=0.5;kernel[4]=0;break;
+  }
+  computeResult();
+}
+
+let playing=false,animPos=0,animT=0,lastTS=null,dragging=null,currentLayout=null;
+
+function isCyclic(){return $('chkCyclic').checked;}
+function showAll(){return $('chkShowAll').checked;}
+
+function computeResult(){
+  if(isCyclic()){
+    result=new Array(SIG_LEN).fill(0);
+    for(let n=0;n<SIG_LEN;n++){
+      let s=0;for(let k=0;k<KER_LEN;k++){
+        s+=signal[((n-k)%SIG_LEN+SIG_LEN)%SIG_LEN]*kernel[k];
+      }result[n]=s;
+    }
+  } else {
+    const rL=SIG_LEN+KER_LEN-1;result=new Array(rL).fill(0);
+    for(let n=0;n<rL;n++){
+      let s=0;for(let k=0;k<KER_LEN;k++){
+        const si=n-k;if(si>=0&&si<SIG_LEN)s+=signal[si]*kernel[k];
+      }result[n]=s;
+    }
+  }
+}
+computeResult();
+
+function getResLen(){return isCyclic()?SIG_LEN:SIG_LEN+KER_LEN-1;}
+function getAnimMin(){return isCyclic()?0:0;}
+function getAnimMax(){return getResLen()-1;}
+
+function togglePlay(){playing=!playing;$('btnPlay').textContent=playing?'⏸':'▶';$('btnPlay').classList.toggle('active',playing);if(playing)lastTS=null;}
+function stepFwd(){if(animPos<getAnimMax())animPos++;animT=0;}
+function stepBack(){if(animPos>getAnimMin())animPos--;animT=0;}
+function resetAnim(){animPos=getAnimMin();animT=0;if(playing)togglePlay();}
+
+function resize(){
+  C.width=C.parentElement.clientWidth*devicePixelRatio;
+  C.height=C.parentElement.clientHeight*devicePixelRatio;
+  C.style.width=C.parentElement.clientWidth+'px';
+  C.style.height=C.parentElement.clientHeight+'px';
+  X.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener('resize',resize);resize();
+
+function getMousePos(e){const r=C.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function hitTest(mx,my){
+  if(!currentLayout)return null;
+  const L=currentLayout;
+  for(let i=0;i<SIG_LEN;i++){const dx=mx-L.sigDots[i].x,dy=my-L.sigDots[i].y;if(dx*dx+dy*dy<225)return{type:'signal',index:i};}
+  for(let i=0;i<KER_LEN;i++){const dx=mx-L.kerDots[i].x,dy=my-L.kerDots[i].y;if(dx*dx+dy*dy<225)return{type:'kernel',index:i};}
+  return null;
+}
+C.addEventListener('mousedown',e=>{dragging=hitTest(...Object.values(getMousePos(e)));});
+C.addEventListener('mousemove',e=>{
+  if(!dragging||!currentLayout)return;const p=getMousePos(e);
+  if(dragging.type==='signal')signal[dragging.index]=Math.max(-1,Math.min(1,(currentLayout.sigBaseY-p.y)/currentLayout.maxH));
+  else kernel[dragging.index]=Math.max(-1,Math.min(1,(currentLayout.kerBaseY-p.y)/currentLayout.maxH));
+  computeResult();
+});
+C.addEventListener('mouseup',()=>{dragging=null;});
+C.addEventListener('mouseleave',()=>{dragging=null;});
+C.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];dragging=hitTest(t.clientX-C.getBoundingClientRect().left,t.clientY-C.getBoundingClientRect().top);},{passive:false});
+C.addEventListener('touchmove',e=>{
+  e.preventDefault();if(!dragging||!currentLayout)return;
+  const t=e.touches[0],p={x:t.clientX-C.getBoundingClientRect().left,y:t.clientY-C.getBoundingClientRect().top};
+  if(dragging.type==='signal')signal[dragging.index]=Math.max(-1,Math.min(1,(currentLayout.sigBaseY-p.y)/currentLayout.maxH));
+  else kernel[dragging.index]=Math.max(-1,Math.min(1,(currentLayout.kerBaseY-p.y)/currentLayout.maxH));
+  computeResult();
+},{passive:false});
+C.addEventListener('touchend',()=>{dragging=null;});
+
+function drawStemPlot(vals,positions,baseY,maxH,color,dotR,showVals,highlightSet,showIdx){
+  if(positions.length===0)return;
+  const minPx=Math.min(...positions)-10,maxPx=Math.max(...positions)+10;
+  X.strokeStyle='rgba(255,255,255,0.05)';X.lineWidth=1;
+  X.beginPath();X.moveTo(minPx,baseY);X.lineTo(maxPx,baseY);X.stroke();
+
+  for(let i=0;i<vals.length;i++){
+    const cx=positions[i];if(cx===undefined)continue;
+    const val=vals[i],barH=val*maxH;
+    const hl=highlightSet&&highlightSet.has(i);
+
+    X.strokeStyle=color;X.lineWidth=hl?3:2;
+    X.beginPath();X.moveTo(cx,baseY);X.lineTo(cx,baseY-barH);X.stroke();
+
+    X.beginPath();X.arc(cx,baseY-barH,hl?dotR+2:dotR,0,Math.PI*2);
+    X.fillStyle=color;X.fill();
+    if(hl){X.strokeStyle='rgba(255,255,255,0.4)';X.lineWidth=1.5;X.stroke();}
+
+    if(showVals&&Math.abs(val)>0.001){
+      X.font='10px "IBM Plex Mono",monospace';
+      X.fillStyle='rgba(255,255,255,0.4)';X.textAlign='center';
+      X.fillText(val.toFixed(2),cx,val>=0?baseY-barH-10:baseY-barH+14);
+    }
+    if(showIdx){
+      X.font='9px "IBM Plex Mono",monospace';X.fillStyle='rgba(255,255,255,0.18)';X.textAlign='center';
+      X.fillText(i,cx,baseY+13);
+    }
+  }
+}
+
+// Dimmed version for unrevealed result
+function drawStemPlotPartial(vals,positions,baseY,maxH,color,dimColor,dotR,revealUpTo,highlightSet,showIdx){
+  if(positions.length===0)return;
+  const minPx=Math.min(...positions)-10,maxPx=Math.max(...positions)+10;
+  X.strokeStyle='rgba(255,255,255,0.05)';X.lineWidth=1;
+  X.beginPath();X.moveTo(minPx,baseY);X.lineTo(maxPx,baseY);X.stroke();
+
+  for(let i=0;i<vals.length;i++){
+    const cx=positions[i];if(cx===undefined)continue;
+    const revealed=showAll()||i<=revealUpTo;
+    const val=revealed?vals[i]:0;
+    const barH=val*maxH;
+    const hl=highlightSet&&highlightSet.has(i);
+    const col=revealed?color:dimColor;
+
+    X.strokeStyle=col;X.lineWidth=hl?3:2;
+    X.beginPath();X.moveTo(cx,baseY);X.lineTo(cx,baseY-barH);X.stroke();
+
+    X.beginPath();X.arc(cx,baseY-barH,hl?dotR+2:dotR,0,Math.PI*2);
+    X.fillStyle=col;X.fill();
+    if(hl){X.strokeStyle='rgba(255,255,255,0.4)';X.lineWidth=1.5;X.stroke();}
+
+    if(revealed&&Math.abs(val)>0.001){
+      X.font='10px "IBM Plex Mono",monospace';
+      X.fillStyle='rgba(255,255,255,0.35)';X.textAlign='center';
+      X.fillText(val.toFixed(2),cx,val>=0?baseY-barH-10:baseY-barH+14);
+    }
+    if(showIdx){
+      X.font='9px "IBM Plex Mono",monospace';X.fillStyle=`rgba(255,255,255,${revealed?0.18:0.07})`;X.textAlign='center';
+      X.fillText(i,cx,baseY+13);
+    }
+  }
+}
+
+function draw(ts){
+  const w=C.width/devicePixelRatio,h=C.height/devicePixelRatio;
+  X.clearRect(0,0,w,h);
+
+  if(playing){
+    if(lastTS===null)lastTS=ts;
+    const dt=(ts-lastTS)/1000;lastTS=ts;
+    animT+=dt*(+$('speedSlider').value/10);
+    while(animT>=1){animT-=1;animPos++;if(animPos>getAnimMax())animPos=getAnimMin();}
+  } else lastTS=null;
+
+  computeResult();
+  const resLen=getResLen();
+  const curN=animPos;
+
+  // --- Layout ---
+  // We need space for the kernel to sit to the LEFT of the signal at the start.
+  // Total horizontal slots needed: KER_LEN (left pad for kernel start) + resLen
+  const totalSlots=KER_LEN+resLen;
+  const margin=25;
+  const barW=Math.min(38,Math.max(18,(w-2*margin)/totalSlots));
+  
+  // Signal starts after KER_LEN slots of padding (so kernel can start fully to the left)
+  const sigStartX=margin+KER_LEN*barW;
+  
+  // Three rows with controlled spacing. Allocate space for negatives.
+  const maxH=Math.min(h*0.14, 80); // cap bar height
+  const topPad=15;
+  const rowGap=maxH*0.4+30; // gap between baseY and top of next row's bars
+  
+  const sigBaseY=topPad+maxH+15; // signal baseline (positive bars go up from here)
+  const kerBaseY=sigBaseY+maxH+rowGap+maxH+5; // kernel baseline (space for sig negatives + gap + ker positives)
+  const resBaseY=kerBaseY+maxH+rowGap+maxH+5; // result baseline
+
+  // Ensure result negatives don't go off screen
+  // resBaseY + maxH (for negatives) should be < h - 15
+  // If not, we'd need to shrink maxH. But with the cap above it should be fine.
+
+  const sigPositions=[];
+  for(let i=0;i<SIG_LEN;i++)sigPositions.push(sigStartX+i*barW+barW/2);
+
+  // Kernel positions: h[k] aligns with x[curN - k]
+  // So h[0] is at signal index curN, h[1] at curN-1, etc.
+  // When curN=0: h[0] at sig[0], h[1] at sig[-1] (which is to the left of signal)
+  // The padding ensures we have room.
+  const kerPositions=[];
+  for(let k=0;k<KER_LEN;k++){
+    let si=curN-k;
+    if(isCyclic())si=((si%SIG_LEN)+SIG_LEN)%SIG_LEN;
+    kerPositions.push(sigStartX+si*barW+barW/2);
+  }
+
+  // Result positions aligned with signal: result[n] at same x as signal[n] for linear
+  const resStartX=sigStartX; // result[0] aligns with signal[0]
+  const resPositions=[];
+  for(let i=0;i<resLen;i++)resPositions.push(resStartX+i*barW+barW/2);
+
+  // Store layout for hit testing
+  const sigDots=sigPositions.map((px,i)=>({x:px,y:sigBaseY-signal[i]*maxH}));
+  const kerDots=kerPositions.map((px,i)=>({x:px,y:kerBaseY-kernel[i]*maxH}));
+  currentLayout={sigDots,kerDots,sigBaseY,kerBaseY,maxH};
+
+  // Highlight sets
+  const hlSig=new Set(),hlKer=new Set();
+  for(let k=0;k<KER_LEN;k++){
+    let si=curN-k;
+    if(isCyclic())si=((si%SIG_LEN)+SIG_LEN)%SIG_LEN;
+    if(si>=0&&si<SIG_LEN){hlSig.add(si);hlKer.add(k);}
+  }
+  const hlRes=new Set();
+  if(curN>=0&&curN<resLen)hlRes.add(curN);
+
+  // --- Draw signal (always fully visible) ---
+  X.font='bold 13px "IBM Plex Mono",monospace';
+  X.fillStyle='rgba(130,180,255,0.75)';X.textAlign='left';
+  X.fillText('x[n]',sigPositions[0]-10,sigBaseY-maxH-14);
+  drawStemPlot(signal,sigPositions,sigBaseY,maxH,'rgba(130,180,255,0.85)',5,true,hlSig,true);
+
+  // --- Draw kernel (at animated position, below signal) ---
+  const kerLabelX=Math.min(...kerPositions)-10;
+  X.font='bold 13px "IBM Plex Mono",monospace';
+  X.fillStyle='rgba(240,200,80,0.75)';X.textAlign='left';
+  X.fillText('h[n−k]',Math.max(kerLabelX,5),kerBaseY-maxH-14);
+  X.font='10px "IBM Plex Mono",monospace';X.fillStyle='rgba(240,200,80,0.3)';
+  X.fillText('(flipped)',Math.max(kerLabelX,5),kerBaseY-maxH-1);
+
+  drawStemPlot(kernel,kerPositions,kerBaseY,maxH,'rgba(240,200,80,0.85)',5,true,hlKer,false);
+
+  // k-index labels
+  X.font='9px "IBM Plex Mono",monospace';X.fillStyle='rgba(240,200,80,0.22)';X.textAlign='center';
+  for(let k=0;k<KER_LEN;k++)X.fillText('k='+k,kerPositions[k],kerBaseY+13);
+
+  // --- Connecting lines & products ---
+  for(let k=0;k<KER_LEN;k++){
+    let si=curN-k;
+    if(isCyclic())si=((si%SIG_LEN)+SIG_LEN)%SIG_LEN;
+    if(si<0||si>=SIG_LEN)continue;
+
+    const sx=sigPositions[si],kx=kerPositions[k];
+    const prod=signal[si]*kernel[k];
+
+    X.strokeStyle='rgba(100,255,180,0.08)';X.lineWidth=1;X.setLineDash([3,3]);
+    X.beginPath();X.moveTo(sx,sigBaseY+3);X.lineTo(kx,kerBaseY-kernel[k]*maxH);X.stroke();
+    X.setLineDash([]);
+
+    if(Math.abs(prod)>0.001){
+      const mx=(sx+kx)/2,my=(sigBaseY+kerBaseY)/2;
+      X.font='bold 10px "IBM Plex Mono",monospace';
+      X.fillStyle='rgba(100,255,180,0.5)';X.textAlign='center';
+      X.fillText(prod.toFixed(2),mx,my);
+    }
+  }
+
+  // --- Sum annotation ---
+  if(curN>=0&&curN<resLen){
+    const sumVal=result[curN];
+    const eqX=(Math.min(...kerPositions)+Math.max(...kerPositions))/2;
+    const eqY=(kerBaseY+resBaseY)/2-5;
+    X.font='bold 12px "IBM Plex Mono",monospace';
+    X.fillStyle='rgba(100,255,180,0.65)';X.textAlign='center';
+    X.fillText('Σ = '+sumVal.toFixed(3),eqX,eqY);
+    X.font='10px "IBM Plex Mono",monospace';X.fillStyle='rgba(100,255,180,0.35)';
+    X.fillText('→ y['+curN+']',eqX,eqY+14);
+
+    const resDotX=resPositions[curN];
+    const resDotY=resBaseY-(showAll()||curN<=animPos?result[curN]:0)*maxH;
+    X.strokeStyle='rgba(100,255,180,0.12)';X.lineWidth=1;X.setLineDash([4,4]);
+    X.beginPath();X.moveTo(eqX,eqY+18);X.lineTo(resDotX,resDotY-8);X.stroke();
+    X.setLineDash([]);
+  }
+
+  // --- Draw result ---
+  X.font='bold 13px "IBM Plex Mono",monospace';
+  X.fillStyle='rgba(100,220,160,0.75)';X.textAlign='left';
+  X.fillText('(x ∗ h)[n]',resPositions[0]-10,resBaseY-maxH-14);
+
+  drawStemPlotPartial(result,resPositions,resBaseY,maxH,
+    'rgba(100,230,170,0.85)','rgba(100,230,170,0.12)',5,curN,hlRes,true);
+
+  // Highlight ring
+  if(curN>=0&&curN<resLen){
+    const rx=resPositions[curN];
+    const rv=showAll()||curN<=animPos?result[curN]:0;
+    X.beginPath();X.arc(rx,resBaseY-rv*maxH,10,0,Math.PI*2);
+    X.strokeStyle='rgba(100,255,180,0.3)';X.lineWidth=2;X.stroke();
+  }
+
+  // n indicator
+  X.font='bold 11px "IBM Plex Mono",monospace';
+  X.fillStyle='rgba(100,220,160,0.45)';X.textAlign='left';
+  const lastResX=resPositions[resLen-1]||resPositions[0];
+  X.fillText('n='+curN,lastResX+18,resBaseY);
+
+  // Bottom hint
+  if(!playing&&animPos<=getAnimMin()){
+    X.font='12px "IBM Plex Sans",sans-serif';X.fillStyle='rgba(255,255,255,0.15)';X.textAlign='center';
+    X.fillText('Drag dots to edit · ▶ to animate',w/2,h-8);
+  }
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

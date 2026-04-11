@@ -24,7 +24,7 @@
     "carve_real_image": "PASS"
   },
   "timing": {
-    "carve_10_seams_50x80": 36.2
+    "carve_10_seams_50x80": 37.1
   },
   "source": {
     "compute_energy": "def compute_energy(gray):\n    \"\"\"Compute energy map using Sobel filters.\"\"\"\n    sx = torch.tensor([[-1.,0.,1.],[-2.,0.,2.],[-1.,0.,1.]])\n    sy = torch.tensor([[-1.,-2.,-1.],[0.,0.,0.],[1.,2.,1.]])\n    gx = conv2d(gray, sx)\n    gy = conv2d(gray, sy)\n    e = gx.abs() + gy.abs()\n    return F.pad(e.unsqueeze(0), (1, 1, 1, 1), mode='replicate').squeeze(0)\n",
