@@ -566,8 +566,9 @@ nav {
 }
 
 .hw-link svg {
-  width: 13px;
-  height: 13px;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
 }
 
 /* Link rows with labels */
@@ -587,8 +588,8 @@ nav {
 
 .hw-links-row {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
+  flex-wrap: nowrap;
 }
 
 .hw-links-group + .hw-links-group {
