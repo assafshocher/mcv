@@ -301,6 +301,9 @@
 </footer>
 
 <!-- ═══════════ SUBMISSION MODAL ═══════════ -->
+<!-- Static hidden iframe — must exist in DOM before any form submission -->
+<iframe id="mcv-upload-frame" name="mcv-upload-frame" style="display:none;"></iframe>
+
 <div id="submit-modal" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
   <div style="background:var(--bg-card,#1a1a2e); border:1px solid var(--border,#333); border-radius:12px; padding:32px; max-width:420px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
     <h3 id="submit-title" style="margin:0 0 20px 0; font-size:1.2rem; color:var(--text,#eee);">Submit HW</h3>
@@ -326,7 +329,7 @@
 (function() {
   // ═══════ CONFIGURATION ═══════
   // Replace this URL after deploying the Google Apps Script web app
-  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyi9OIZ0bTMcdKqTomCUtDzA3P4FKi2ZBobotE27BmTlurWD9fT4JGCUC3SzlvMvFu6ng/exec';
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziQnqUEZFb0efCG7iDnr0iLWcOCs4D3WCb4zXZeYDeLtx5tW5558oD9M1bMFKi8gdJGA/exec';
   // ══════════════════════════════
 
   const modal   = document.getElementById('submit-modal');
@@ -409,23 +412,51 @@
       // Read file as base64
       const base64 = await readFileAsBase64(file);
 
-      const payload = {
+      const payload = JSON.stringify({
         studentId: sid,
         hw: currentHw,
         assignmentType: currentType,
         fileName: `${currentType}${getExtension(file.name)}`,
         fileData: base64,
         mimeType: file.type || 'application/octet-stream'
-      };
-
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',  // Apps Script doesn't support CORS, so we go opaque
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
       });
 
-      // With no-cors mode, we can't read the response, but if it didn't throw, it likely worked
+      // Use hidden form targeting the static iframe (already in DOM).
+      // Form submissions are never blocked by CORS.
+      const uploadFrame = document.getElementById('mcv-upload-frame');
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = APPS_SCRIPT_URL;
+      form.target = 'mcv-upload-frame';  // matches the iframe's name attribute
+      form.enctype = 'application/x-www-form-urlencoded';
+      form.style.display = 'none';
+
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'payload';
+      input.value = payload;
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+
+      // Set up the load listener BEFORE submitting
+      const uploadDone = new Promise((resolve) => {
+        const onLoad = () => {
+          uploadFrame.removeEventListener('load', onLoad);
+          resolve('loaded');
+        };
+        uploadFrame.addEventListener('load', onLoad);
+        setTimeout(() => resolve('timeout'), 15000);
+      });
+
+      form.submit();
+
+      await uploadDone;
+
+      // Clean up the form
+      document.body.removeChild(form);
+
       showStatus(
         `Submitted! ${currentHw.toUpperCase()} ${currentType} uploaded successfully. You can re-submit to overwrite.`,
         'success'
