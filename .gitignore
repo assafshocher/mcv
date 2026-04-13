@@ -22,19 +22,16 @@ zi*
 *~
 *.swp
 
-# Grading (private, not for students)
-grading/
+# ── Private (not for students) ──
 
-# Old kit directories (superseded by grading/)
-hw2_grading_kit/
-hw3_grading_kit/
-mcv_hw_grading_and_testing_kit/
+# Instructor tools (grading, AI detection, scripts, skills)
+tools/
 
-# Local website copy (root-level files are canonical)
-mcv-website-clean/
-
-# Slide source files (too large, keep .pptx local)
+# Lecture recordings & composed videos (large files)
 slides/
+
+# Old superseded kits
+archive/
 
 # Claude settings
 .claude/
