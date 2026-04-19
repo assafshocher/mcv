@@ -35,3 +35,6 @@ archive/
 
 # Claude settings
 .claude/
+
+.idea
+
