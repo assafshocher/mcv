@@ -414,9 +414,10 @@
       return;
     }
 
-    // Check size (100 MB limit for Apps Script)
-    if (file.size > 100 * 1024 * 1024) {
-      showStatus('File too large (max 100 MB).', 'error');
+    // Check size. Apps Script POST body is hard-capped at ~50 MB, and
+    // base64 inflates the payload by ~33%, so 35 MB raw is the safe ceiling.
+    if (file.size > 35 * 1024 * 1024) {
+      showStatus('File too large (max 35 MB). Try clearing notebook outputs (Kernel → Restart & Clear Output) and re-saving.', 'error');
       return;
     }
 
@@ -431,7 +432,10 @@
 
     btnGo.disabled = true;
     btnGo.textContent = 'Uploading...';
-    showStatus('Uploading...', 'info');
+    showStatus('Reading file...', 'info');
+
+    const fileName = `${currentType}${getExtension(file.name)}`;
+    const beforeSubmitTime = Date.now();
 
     try {
       // Read file as base64
@@ -441,19 +445,19 @@
         studentId: sid,
         hw: currentHw,
         assignmentType: currentType,
-        fileName: `${currentType}${getExtension(file.name)}`,
+        fileName: fileName,
         fileData: base64,
         mimeType: file.type || 'application/octet-stream'
       });
 
-      // Use hidden form targeting the static iframe (already in DOM).
-      // Form submissions are never blocked by CORS.
+      // Use hidden form targeting the static iframe (the iframe avoids CORS,
+      // but the response is opaque to JS — we VERIFY success below via GET).
       const uploadFrame = document.getElementById('mcv-upload-frame');
 
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = APPS_SCRIPT_URL;
-      form.target = 'mcv-upload-frame';  // matches the iframe's name attribute
+      form.target = 'mcv-upload-frame';
       form.enctype = 'application/x-www-form-urlencoded';
       form.style.display = 'none';
 
@@ -462,38 +466,111 @@
       input.name = 'payload';
       input.value = payload;
       form.appendChild(input);
-
       document.body.appendChild(form);
 
-      // Set up the load listener BEFORE submitting
       const uploadDone = new Promise((resolve) => {
         const onLoad = () => {
           uploadFrame.removeEventListener('load', onLoad);
           resolve('loaded');
         };
         uploadFrame.addEventListener('load', onLoad);
-        setTimeout(() => resolve('timeout'), 15000);
+        // Generous timeout — large files over slow connections take a while
+        setTimeout(() => resolve('timeout'), 120000);
       });
 
+      showStatus(`Uploading ${(file.size/1024/1024).toFixed(1)} MB... please wait, this can take 30s–2min for large files.`, 'info');
       form.submit();
-
-      await uploadDone;
-
-      // Clean up the form
+      const formResult = await uploadDone;
       document.body.removeChild(form);
 
-      showStatus(
-        `Submitted! ${currentHw.toUpperCase()} ${currentType} uploaded successfully. You can re-submit to overwrite.`,
-        'success'
-      );
-      btnGo.textContent = 'Done';
+      // ★ VERIFY the upload actually succeeded by querying the server.
+      // The iframe-based POST cannot read responses (cross-origin), so without
+      // this check, silent backend failures look like success to the user.
+      showStatus('Verifying submission on server...', 'info');
+
+      // Detect whether the backend is the new file-aware version. If not,
+      // we fall back to a folder-existence check + a visible warning, since
+      // the old backend can't tell us whether the specific file actually saved.
+      const backendIsNew = await isNewBackend();
+      const verifyOk = await verifyUpload(sid, currentHw, fileName, beforeSubmitTime, backendIsNew);
+
+      if (verifyOk.found) {
+        const updatedAt = verifyOk.updated ? new Date(verifyOk.updated).toLocaleString() : '';
+        const sizeMB = verifyOk.size ? ` (${(verifyOk.size/1024/1024).toFixed(2)} MB)` : '';
+        const verifiedSuffix = backendIsNew
+          ? ` confirmed on server${updatedAt ? ' at ' + updatedAt : ''}.`
+          : ` uploaded (server confirmation limited — backend pending an update; if you suspect a problem, ask the instructor to verify).`;
+        showStatus(
+          `Submitted! ${currentHw.toUpperCase()} ${currentType.replace('_',' ')}${sizeMB}${verifiedSuffix} You can re-submit to overwrite.`,
+          'success'
+        );
+        btnGo.textContent = 'Done';
+      } else {
+        const reason = verifyOk.reason || 'unknown';
+        const hint = (file.size > 9 * 1024 * 1024)
+          ? ' Files over ~9 MB are known to fail before the backend Drive API is enabled. Please notify the instructor.'
+          : ' Please try again, or contact the instructor.';
+        throw new Error(`Server did not confirm the upload (reason: ${reason}).${hint}`);
+      }
 
     } catch (err) {
-      showStatus(`Upload failed: ${err.message}. Try again or contact the instructor.`, 'error');
+      showStatus(`Upload failed: ${err.message}`, 'error');
       btnGo.disabled = false;
       btnGo.textContent = 'Upload';
     }
   });
+
+  // Detect whether the backend exposes the new file-aware verification.
+  // The new doGet returns a `version` field on the no-arg endpoint.
+  async function isNewBackend() {
+    try {
+      const r = await fetch(APPS_SCRIPT_URL, { method: 'GET' });
+      const data = await r.json();
+      return Boolean(data && data.version);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Query the Apps Script GET endpoint to verify the file was actually saved.
+  // - On new backend: require {found, size, updated} with a fresh timestamp.
+  // - On old backend: best-effort — accept {found:true} (folder exists),
+  //   but the caller will warn the user that confirmation is limited.
+  async function verifyUpload(studentId, hw, fileName, sinceTimestamp, strict) {
+    const url = `${APPS_SCRIPT_URL}?check=1&hw=${encodeURIComponent(hw)}&studentId=${encodeURIComponent(studentId)}&fileName=${encodeURIComponent(fileName)}`;
+    const deadline = Date.now() + 10000;
+    let lastResp = { found: false, reason: 'no_response' };
+    while (Date.now() < deadline) {
+      try {
+        const r = await fetch(url, { method: 'GET' });
+        const data = await r.json();
+        lastResp = data;
+        if (data.found) {
+          if (strict) {
+            // Require file-level fields (only present on new backend).
+            if (data.size === undefined || !data.updated) {
+              lastResp = { found: false, reason: 'backend_outdated_no_file_check' };
+              await new Promise(r => setTimeout(r, 1500));
+              continue;
+            }
+            // Ensure the file was updated AFTER our submit (not a stale file).
+            if (sinceTimestamp) {
+              const updatedAt = new Date(data.updated).getTime();
+              if (updatedAt + 5000 < sinceTimestamp) {
+                await new Promise(r => setTimeout(r, 1500));
+                continue;
+              }
+            }
+          }
+          return data;
+        }
+      } catch (e) {
+        lastResp = { found: false, reason: 'fetch_error: ' + e.message };
+      }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    return lastResp;
+  }
 
   function readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
