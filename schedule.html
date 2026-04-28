@@ -414,9 +414,9 @@
       return;
     }
 
-    // Check size (10 MB limit for Apps Script)
-    if (file.size > 10 * 1024 * 1024) {
-      showStatus('File too large (max 10 MB).', 'error');
+    // Check size (100 MB limit for Apps Script)
+    if (file.size > 100 * 1024 * 1024) {
+      showStatus('File too large (max 100 MB).', 'error');
       return;
     }
 
