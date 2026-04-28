@@ -414,10 +414,12 @@
       return;
     }
 
-    // Check size. Apps Script POST body is hard-capped at ~50 MB, and
-    // base64 inflates the payload by ~33%, so 35 MB raw is the safe ceiling.
-    if (file.size > 35 * 1024 * 1024) {
-      showStatus('File too large (max 35 MB). Try clearing notebook outputs (Kernel → Restart & Clear Output) and re-saving.', 'error');
+    // Hard ceiling. Per-chunk POST body is capped by Apps Script at ~50 MB;
+    // chunked uploads go past that by splitting the file. 200 MB is a sane
+    // upper bound for HW notebooks — anything larger is almost certainly a
+    // mistake (binary data accidentally embedded, etc.).
+    if (file.size > 200 * 1024 * 1024) {
+      showStatus('File too large (max 200 MB). Please contact the instructor.', 'error');
       return;
     }
 
@@ -435,25 +437,115 @@
     showStatus('Reading file...', 'info');
 
     const fileName = `${currentType}${getExtension(file.name)}`;
+    const mimeType = file.type || 'application/octet-stream';
     const beforeSubmitTime = Date.now();
 
+    // Files <= SINGLE_SHOT_MAX use one POST. Larger files use chunked upload
+    // because Apps Script POST body is capped at ~50 MB. base64 inflates by
+    // 33%, so 25 MB raw is the safe single-shot cutoff.
+    const SINGLE_SHOT_MAX = 25 * 1024 * 1024;
+    const CHUNK_SIZE      = 22 * 1024 * 1024; // ~30 MB base64 → ~32 MB body
+
     try {
-      // Read file as base64
-      const base64 = await readFileAsBase64(file);
+      const backendIsNew = await isNewBackend();
 
-      const payload = JSON.stringify({
-        studentId: sid,
-        hw: currentHw,
-        assignmentType: currentType,
-        fileName: fileName,
-        fileData: base64,
-        mimeType: file.type || 'application/octet-stream'
-      });
+      // Size guards against the legacy backend. The old DriveApp.createFile
+      // path silently fails on files over ~9 MB, and the old script doesn't
+      // know about chunks at all — so anything larger must wait for the
+      // redeploy.
+      const OLD_BACKEND_MAX = 8 * 1024 * 1024;
+      if (!backendIsNew && file.size > OLD_BACKEND_MAX) {
+        throw new Error(
+          `This file is ${(file.size/1024/1024).toFixed(1)} MB. The submission ` +
+          `backend needs to be redeployed before it can reliably accept files ` +
+          `larger than 8 MB. Please notify the instructor (TA / Assaf).`
+        );
+      }
 
-      // Use hidden form targeting the static iframe (the iframe avoids CORS,
-      // but the response is opaque to JS — we VERIFY success below via GET).
+      if (file.size <= SINGLE_SHOT_MAX) {
+        // ── single-shot path ────────────────────────────────────────────
+        showStatus(`Uploading ${(file.size/1024/1024).toFixed(1)} MB...`, 'info');
+        const base64 = await readBlobAsBase64(file);
+        const payload = JSON.stringify({
+          studentId: sid, hw: currentHw, assignmentType: currentType,
+          fileName: fileName, fileData: base64, mimeType: mimeType
+        });
+        await postViaIframe(payload);
+      } else {
+        // ── chunked path ────────────────────────────────────────────────
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const uploadId    = 'u' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        showStatus(
+          `Large file (${(file.size/1024/1024).toFixed(1)} MB) — uploading in ${totalChunks} chunks. ` +
+          `This will take a few minutes.`,
+          'info'
+        );
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * CHUNK_SIZE;
+          const end   = Math.min(start + CHUNK_SIZE, file.size);
+          const chunkBlob = file.slice(start, end);
+          const chunkB64  = await readBlobAsBase64(chunkBlob);
+          showStatus(
+            `Uploading chunk ${i + 1} / ${totalChunks} ` +
+            `(${(end/1024/1024).toFixed(1)} / ${(file.size/1024/1024).toFixed(1)} MB)...`,
+            'info'
+          );
+          const chunkPayload = JSON.stringify({
+            uploadId: uploadId,
+            chunkIndex: i,
+            totalChunks: totalChunks,
+            studentId: sid, hw: currentHw, assignmentType: currentType,
+            fileName: fileName, fileData: chunkB64, mimeType: mimeType
+          });
+          await postViaIframe(chunkPayload);
+        }
+        showStatus(`All chunks sent — server is assembling the file...`, 'info');
+        // Server-side concat for ~70 MB takes a few seconds. Verify loop
+        // below polls for up to 30 s.
+      }
+
+      // ── verify ──────────────────────────────────────────────────────
+      showStatus('Verifying submission on server...', 'info');
+      const verifyOk = await verifyUpload(
+        sid, currentHw, fileName, beforeSubmitTime,
+        /* strict = */ backendIsNew,
+        /* maxWaitMs = */ file.size > SINGLE_SHOT_MAX ? 60000 : 10000,
+        /* expectedSize = */ file.size
+      );
+
+      if (verifyOk.found) {
+        const updatedAt = verifyOk.updated ? new Date(verifyOk.updated).toLocaleString() : '';
+        const sizeMB    = verifyOk.size ? ` (${(verifyOk.size/1024/1024).toFixed(2)} MB)` : '';
+        const verifiedSuffix = backendIsNew
+          ? ` confirmed on server${updatedAt ? ' at ' + updatedAt : ''}.`
+          : ` uploaded (server confirmation limited — backend pending an update; if you suspect a problem, ask the instructor to verify).`;
+        showStatus(
+          `Submitted! ${currentHw.toUpperCase()} ${currentType.replace('_',' ')}${sizeMB}${verifiedSuffix} You can re-submit to overwrite.`,
+          'success'
+        );
+        btnGo.textContent = 'Done';
+      } else {
+        const reason = verifyOk.reason || 'unknown';
+        const hint = (file.size > 9 * 1024 * 1024)
+          ? ' If your file is large, the backend may not yet have the Drive API enabled. Please notify the instructor.'
+          : ' Please try again, or contact the instructor.';
+        throw new Error(`Server did not confirm the upload (reason: ${reason}).${hint}`);
+      }
+
+    } catch (err) {
+      showStatus(`Upload failed: ${err.message}`, 'error');
+      btnGo.disabled = false;
+      btnGo.textContent = 'Upload';
+    }
+  });
+
+  // POST a payload via a hidden form targeting the static iframe.
+  // The iframe avoids CORS issues, but the response is opaque to JS so we
+  // can't see if the upload actually succeeded — verification is done by
+  // a follow-up GET. Resolves when the iframe finishes loading.
+  function postViaIframe(payload) {
+    return new Promise((resolve) => {
       const uploadFrame = document.getElementById('mcv-upload-frame');
-
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = APPS_SCRIPT_URL;
@@ -468,57 +560,23 @@
       form.appendChild(input);
       document.body.appendChild(form);
 
-      const uploadDone = new Promise((resolve) => {
-        const onLoad = () => {
-          uploadFrame.removeEventListener('load', onLoad);
-          resolve('loaded');
-        };
-        uploadFrame.addEventListener('load', onLoad);
-        // Generous timeout — large files over slow connections take a while
-        setTimeout(() => resolve('timeout'), 120000);
-      });
+      let done = false;
+      const finish = (reason) => {
+        if (done) return;
+        done = true;
+        uploadFrame.removeEventListener('load', onLoad);
+        try { document.body.removeChild(form); } catch (_) {}
+        resolve(reason);
+      };
+      const onLoad = () => finish('loaded');
+      uploadFrame.addEventListener('load', onLoad);
+      // Per-chunk timeout. Apps Script execution is bounded at 6 min, but
+      // a single 22 MB chunk realistically takes 10–60 s.
+      setTimeout(() => finish('timeout'), 180000);
 
-      showStatus(`Uploading ${(file.size/1024/1024).toFixed(1)} MB... please wait, this can take 30s–2min for large files.`, 'info');
       form.submit();
-      const formResult = await uploadDone;
-      document.body.removeChild(form);
-
-      // ★ VERIFY the upload actually succeeded by querying the server.
-      // The iframe-based POST cannot read responses (cross-origin), so without
-      // this check, silent backend failures look like success to the user.
-      showStatus('Verifying submission on server...', 'info');
-
-      // Detect whether the backend is the new file-aware version. If not,
-      // we fall back to a folder-existence check + a visible warning, since
-      // the old backend can't tell us whether the specific file actually saved.
-      const backendIsNew = await isNewBackend();
-      const verifyOk = await verifyUpload(sid, currentHw, fileName, beforeSubmitTime, backendIsNew);
-
-      if (verifyOk.found) {
-        const updatedAt = verifyOk.updated ? new Date(verifyOk.updated).toLocaleString() : '';
-        const sizeMB = verifyOk.size ? ` (${(verifyOk.size/1024/1024).toFixed(2)} MB)` : '';
-        const verifiedSuffix = backendIsNew
-          ? ` confirmed on server${updatedAt ? ' at ' + updatedAt : ''}.`
-          : ` uploaded (server confirmation limited — backend pending an update; if you suspect a problem, ask the instructor to verify).`;
-        showStatus(
-          `Submitted! ${currentHw.toUpperCase()} ${currentType.replace('_',' ')}${sizeMB}${verifiedSuffix} You can re-submit to overwrite.`,
-          'success'
-        );
-        btnGo.textContent = 'Done';
-      } else {
-        const reason = verifyOk.reason || 'unknown';
-        const hint = (file.size > 9 * 1024 * 1024)
-          ? ' Files over ~9 MB are known to fail before the backend Drive API is enabled. Please notify the instructor.'
-          : ' Please try again, or contact the instructor.';
-        throw new Error(`Server did not confirm the upload (reason: ${reason}).${hint}`);
-      }
-
-    } catch (err) {
-      showStatus(`Upload failed: ${err.message}`, 'error');
-      btnGo.disabled = false;
-      btnGo.textContent = 'Upload';
-    }
-  });
+    });
+  }
 
   // Detect whether the backend exposes the new file-aware verification.
   // The new doGet returns a `version` field on the no-arg endpoint.
@@ -533,12 +591,13 @@
   }
 
   // Query the Apps Script GET endpoint to verify the file was actually saved.
-  // - On new backend: require {found, size, updated} with a fresh timestamp.
+  // - On new backend: require {found, size, updated} with a fresh timestamp,
+  //   and the size must match what we uploaded (within 1% — encoding noise).
   // - On old backend: best-effort — accept {found:true} (folder exists),
   //   but the caller will warn the user that confirmation is limited.
-  async function verifyUpload(studentId, hw, fileName, sinceTimestamp, strict) {
+  async function verifyUpload(studentId, hw, fileName, sinceTimestamp, strict, maxWaitMs, expectedSize) {
     const url = `${APPS_SCRIPT_URL}?check=1&hw=${encodeURIComponent(hw)}&studentId=${encodeURIComponent(studentId)}&fileName=${encodeURIComponent(fileName)}`;
-    const deadline = Date.now() + 10000;
+    const deadline = Date.now() + (maxWaitMs || 10000);
     let lastResp = { found: false, reason: 'no_response' };
     while (Date.now() < deadline) {
       try {
@@ -550,16 +609,24 @@
             // Require file-level fields (only present on new backend).
             if (data.size === undefined || !data.updated) {
               lastResp = { found: false, reason: 'backend_outdated_no_file_check' };
-              await new Promise(r => setTimeout(r, 1500));
+              await new Promise(r => setTimeout(r, 2000));
               continue;
             }
             // Ensure the file was updated AFTER our submit (not a stale file).
             if (sinceTimestamp) {
               const updatedAt = new Date(data.updated).getTime();
               if (updatedAt + 5000 < sinceTimestamp) {
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 2000));
                 continue;
               }
+            }
+            // Size sanity check — for chunked uploads the assembly may take a
+            // few extra seconds, during which a partial / stale file might
+            // exist. Wait until the size matches what we uploaded.
+            if (expectedSize && data.size && Math.abs(data.size - expectedSize) > Math.max(1024, expectedSize * 0.01)) {
+              lastResp = { found: false, reason: `size_mismatch (server: ${data.size}, expected: ${expectedSize})` };
+              await new Promise(r => setTimeout(r, 2000));
+              continue;
             }
           }
           return data;
@@ -567,20 +634,22 @@
       } catch (e) {
         lastResp = { found: false, reason: 'fetch_error: ' + e.message };
       }
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 2000));
     }
     return lastResp;
   }
 
-  function readFileAsBase64(file) {
+  function readBlobAsBase64(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(',')[1]; // strip data:...;base64, prefix
-        resolve(base64);
+        // strip "data:...;base64," prefix
+        const result = reader.result;
+        const comma = result.indexOf(',');
+        resolve(comma >= 0 ? result.substring(comma + 1) : result);
       };
       reader.onerror = reject;
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(blob);
     });
   }
 
