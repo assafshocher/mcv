@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Pairs Explorer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --border-soft: #ecedf2;
+  --border: #d8dae2;
+  --ink: #15171c;
+  --ink-2: #2e3138;
+  --ink-3: #5a5e69;
+  --muted: #8b8f9b;
+  --accent: #1d4ed8;
+  --accent-2: #3b5bdb;
+  --accent-bg: #eef2ff;
+  --accent-line: #c7d2fe;
+  --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+  padding: 2.5rem 2.5rem 4rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { max-width: 1400px; margin: 0 auto; }
+
+/* ===== Header ===== */
+.app-header { margin-bottom: 2rem; }
+.app-header h1 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 0.2rem 0;
+}
+.app-header .subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 1.75rem 0;
+}
+.controls-bar {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+}
+.ft-def {
+  flex: 1;
+  min-width: 280px;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--border-soft);
+}
+.ft-def .katex { font-size: 1em; }
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.control-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.radio-group {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.radio-group label {
+  position: relative;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.32rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition: all 0.12s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.radio-group label:hover { color: var(--ink); background: var(--border-soft); }
+.radio-group input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.radio-group label.is-active { background: var(--ink); color: var(--bg); }
+.radio-group label.is-active:hover { background: var(--ink); color: var(--bg); }
+
+/* ===== Main two-column layout ===== */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.75rem;
+  margin-top: 2rem;
+  position: relative;
+}
+@media (max-width: 820px) {
+  .main-layout { grid-template-columns: 1fr; }
+}
+/* Decorative connector between the two columns */
+.connector {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: serif;
+  font-style: italic;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--accent);
+  z-index: 2;
+  pointer-events: none;
+}
+.connector::before, .connector::after {
+  content: '';
+  position: absolute;
+  width: 0.5rem;
+  height: 1px;
+  background: var(--border);
+  top: 50%;
+}
+.connector::before { right: 100%; }
+.connector::after { left: 100%; }
+
+.side {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  position: relative;
+}
+.side.is-input {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+.side-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.side-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.side.is-input .input-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: white;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.input-tag { display: none; }
+
+.fn-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 2.2rem 0.55rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='none' stroke='%235a5e69' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M3 4.5L6 7.5L9 4.5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  width: 100%;
+  transition: border 0.12s, box-shadow 0.12s;
+}
+.fn-select:hover { border-color: var(--ink-3); }
+.fn-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.side-eq {
+  min-height: 2.4rem;
+  padding: 0.6rem 0.2rem;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+.side-eq .katex { font-size: 1.02em; }
+
+/* Property mode: equation grows to fill the plot's space */
+.side.is-prop .side-eq {
+  flex: 1;
+  min-height: 230px;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+.side.is-prop .side-eq .katex { font-size: 1.15em; }
+.plot-svg.hidden, .params-panel.hidden { display: none; }
+
+.plot-svg { width: 100%; height: 230px; display: block; }
+
+/* ===== Parameters panel ===== */
+.params-panel {
+  margin-top: 1.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 1.1rem 1.5rem;
+}
+.params-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+.params-header .label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.params-header .input-side-info {
+  font-size: 0.85rem;
+  color: var(--ink-3);
+}
+.params-header .input-side-info b {
+  color: var(--accent);
+  font-weight: 600;
+}
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1rem 2rem;
+}
+.param-row { display: flex; flex-direction: column; gap: 0.32rem; }
+.param-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.86rem;
+}
+.param-label .name { color: var(--ink-3); font-weight: 500; }
+.param-label .value {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent);
+  transition: transform 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ===== Properties section ===== */
+.props-section {
+  margin-top: 3rem;
+}
+.props-section h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.4rem 0;
+  color: var(--ink);
+}
+.props-section .desc {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0 0 1.4rem 0;
+}
+.props-list {
+  display: flex;
+  flex-direction: column;
+}
+.prop-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 32px 1fr;
+  align-items: center;
+  gap: 0.5rem 1.2rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.prop-row:last-child { border-bottom: none; }
+.prop-row .name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-3);
+  text-transform: lowercase;
+  letter-spacing: 0;
+}
+.prop-row .eq {
+  padding: 0.2rem 0.4rem;
+  font-size: 1.02rem;
+}
+.prop-row .eq .katex { font-size: 1em; }
+.prop-row .arrow {
+  text-align: center;
+  color: var(--accent);
+  font-size: 1rem;
+  user-select: none;
+}
+@media (max-width: 820px) {
+  .prop-row { grid-template-columns: 1fr; }
+  .prop-row .arrow { display: none; }
+}
+
+/* ===== SVG plot ===== */
+.plot-svg .axis { stroke: var(--ink-3); stroke-width: 1; fill: none; }
+.plot-svg .yaxis { stroke: var(--border); stroke-width: 1; fill: none; }
+.plot-svg .arrowhead { fill: var(--ink-3); }
+.plot-svg .gridline { stroke: var(--border-soft); stroke-width: 1; }
+.plot-svg .curve { stroke: var(--ink); stroke-width: 1.8; fill: none; }
+.plot-svg .impulse-line { stroke: var(--accent); stroke-width: 2.2; }
+.plot-svg .impulse-head { fill: var(--accent); }
+.plot-svg .tick { stroke: var(--ink-3); stroke-width: 1; }
+.plot-svg .ticklabel { fill: var(--ink-3); font-family: var(--sans); font-size: 11px; }
+.plot-svg .axislabel { fill: var(--ink); font-family: serif; font-style: italic; font-size: 13px; }
+.plot-svg .clipped-arrow { fill: var(--accent); opacity: 0.6; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1>Fourier pairs explorer</h1>
+    <p class="subtitle">Pick a function on either side; the other side updates automatically.</p>
+    <div class="controls-bar">
+      <div class="control-group">
+        <span class="control-label">convention</span>
+        <div class="radio-group" id="conv-group">
+          <label><input type="radio" name="conv" value="twopi_nu" checked><span>2π ν</span></label>
+          <label><input type="radio" name="conv" value="omega_asym"><span>ω asymmetric</span></label>
+          <label><input type="radio" name="conv" value="omega_sym"><span>ω symmetric</span></label>
+        </div>
+      </div>
+      <div class="ft-def" id="ft-def"></div>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <div class="side" id="time-side">
+      <div class="side-header">
+        <span class="side-title">time domain</span>
+        <span class="input-tag">input</span>
+      </div>
+      <select class="fn-select" id="time-select"></select>
+      <div class="side-eq" id="time-eq"></div>
+      <svg class="plot-svg" id="time-plot" viewBox="0 0 600 230" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <div class="connector"><span>ℱ</span></div>
+
+    <div class="side" id="freq-side">
+      <div class="side-header">
+        <span class="side-title" id="freq-side-title">frequency domain</span>
+        <span class="input-tag">input</span>
+      </div>
+      <select class="fn-select" id="freq-select"></select>
+      <div class="side-eq" id="freq-eq"></div>
+      <svg class="plot-svg" id="freq-plot" viewBox="0 0 600 230" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="params-panel">
+    <div class="params-header">
+      <span class="label">parameters</span>
+      <span class="input-side-info">editing <b id="input-side-name">time</b> function</span>
+    </div>
+    <div class="param-grid" id="param-grid"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS & HELPERS
+// ============================================================
+const TAU = 2 * Math.PI;
+const SQRT_TAU = Math.sqrt(TAU);
+
+function sinc(x) { if (Math.abs(x) < 1e-10) return 1; const px = Math.PI * x; return Math.sin(px) / px; }
+function sincu(x) { if (Math.abs(x) < 1e-10) return 1; return Math.sin(x) / x; }
+const fmt = (n) => {
+  if (Math.abs(n) < 1e-9) return '0';
+  if (Math.abs(n - Math.round(n)) < 1e-6) return n.toFixed(0);
+  return n.toFixed(2);
+};
+function renderEq(el, latex, display=false) {
+  try {
+    katex.render(latex, el, { displayMode: display, throwOnError: false, output: 'html', strict: false });
+  } catch (e) { el.textContent = latex; }
+}
+
+// ============================================================
+// CONVENTION DATA
+// ============================================================
+const CONV = {
+  twopi_nu: {
+    label: '2π ν',
+    fvar: '\\nu',
+    fvarPlain: 'ν',
+    fxRange: [-5, 5],
+  },
+  omega_asym: {
+    label: 'ω asym',
+    fvar: '\\omega',
+    fvarPlain: 'ω',
+    fxRange: [-12, 12],
+  },
+  omega_sym: {
+    label: 'ω sym',
+    fvar: '\\omega',
+    fvarPlain: 'ω',
+    fxRange: [-12, 12],
+  },
+};
+const TIME_RANGE = [-5, 5];
+
+// ============================================================
+// PAIRS: definitions of the six FT pairs.
+// Each pair has TWO sides. Each side knows its function name (display),
+// its parameters, and how to render itself + the dual.
+// "input" is whichever side the user is editing.
+//
+// Build returns {time, freq} reprs given (convention, inputSide, params).
+// We always store params as the INPUT side's params.
+// ============================================================
+
+// Y-ranges per pair × convention (axes are FROZEN within a pair/conv combo)
+// Index: PAIRS[pid].yRange(conv)  => { time: [min,max], freq: [min,max] }
+// For some pairs we override the freq y-range under different convs.
+
+const PAIRS = {
+
+  // -------------------------------------------------- rect ↔ Sinc
+  rect_sinc: {
+    label: 'rect ↔ Sinc',
+    sides: {
+      time:  { fn: 'rect', label: 'rect' },
+      freq:  { fn: 'sinc', label: 'Sinc' },
+    },
+    params: [
+      { id: 'A', sym: 'A', label: 'amplitude A', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+      { id: 'tau', sym: 'τ', label: 'width τ', min: 0.4, max: 4, step: 0.05, default: 1 },
+    ],
+    yRanges: {
+      twopi_nu:   { rect: [-0.5, 3], sinc: [-1.5, 6] },
+      omega_asym: { rect: [-0.5, 3], sinc: [-1.5, 6] },
+      omega_sym:  { rect: [-0.5, 3], sinc: [-1.0, 4] },
+    },
+    build(conv, inputSide, p) {
+      const C = CONV[conv];
+      const { A, tau } = p;
+      const yR = this.yRanges[conv];
+      // Build the rect repr (lives on whichever side is rect)
+      const rectRepr = (varSym) => ({
+        type: 'curve',
+        latex: `A\\,\\mathrm{rect}\\!\\left(\\dfrac{${varSym}}{\\tau}\\right)`,
+        fn: x => Math.abs(x) < tau/2 ? A : 0,
+        xLabel: varSym,
+        xTicks: [
+          { x: -tau/2, label: `-${fmt(tau/2)}` },
+          { x:  tau/2, label: fmt(tau/2) },
+        ],
+        yMin: yR.rect[0], yMax: yR.rect[1],
+        yMarker: { y: A, label: fmt(A) },
+      });
+      // Build the sinc repr (convention-dependent)
+      let sincRepr;
+      if (conv === 'twopi_nu') {
+        const peak = A * tau;
+        sincRepr = (varSym) => ({
+          type: 'curve',
+          latex: `A\\tau\\,\\mathrm{sinc}(\\tau\\,${varSym})`,
+          fn: x => peak * sinc(tau * x),
+          xLabel: varSym,
+          xTicks: [
+            { x: -1/tau, label: `-${fmt(1/tau)}` },
+            { x:  1/tau, label: fmt(1/tau) },
+            { x:  2/tau, label: fmt(2/tau) },
+          ],
+          yMin: yR.sinc[0], yMax: yR.sinc[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      } else if (conv === 'omega_asym') {
+        const peak = A * tau;
+        sincRepr = (varSym) => ({
+          type: 'curve',
+          latex: `A\\tau\\,\\dfrac{\\sin(${varSym}\\tau/2)}{${varSym}\\tau/2}`,
+          fn: x => peak * sincu(x * tau / 2),
+          xLabel: varSym,
+          xTicks: [
+            { x: -TAU/tau, label: `-${fmt(TAU/tau)}` },
+            { x:  TAU/tau, label: fmt(TAU/tau) },
+            { x:  2*TAU/tau, label: fmt(2*TAU/tau) },
+          ],
+          yMin: yR.sinc[0], yMax: yR.sinc[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      } else {  // omega_sym
+        const peak = A * tau / SQRT_TAU;
+        sincRepr = (varSym) => ({
+          type: 'curve',
+          latex: `\\dfrac{A\\tau}{\\sqrt{2\\pi}}\\,\\dfrac{\\sin(${varSym}\\tau/2)}{${varSym}\\tau/2}`,
+          fn: x => peak * sincu(x * tau / 2),
+          xLabel: varSym,
+          xTicks: [
+            { x: -TAU/tau, label: `-${fmt(TAU/tau)}` },
+            { x:  TAU/tau, label: fmt(TAU/tau) },
+          ],
+          yMin: yR.sinc[0], yMax: yR.sinc[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      }
+      // Apply to time/freq based on which side currently has rect vs sinc
+      // Default mapping: time=rect, freq=sinc. If inputSide=freq and user picked rect there, swap.
+      // We use this.sides to determine current mapping.
+      const timeFn = this.sides.time.fn;
+      const time = (timeFn === 'rect') ? rectRepr('t') : sincRepr('t');
+      const freq = (this.sides.freq.fn === 'rect') ? rectRepr(C.fvar) : sincRepr(C.fvar);
+      return { time, freq };
+    },
+  },
+
+  // -------------------------------------------------- Triangle ↔ Sinc²
+  tri_sinc2: {
+    label: 'Triangle ↔ Sinc²',
+    sides: {
+      time: { fn: 'triangle', label: 'Triangle' },
+      freq: { fn: 'sinc2', label: 'Sinc²' },
+    },
+    params: [
+      { id: 'A', sym: 'A', label: 'amplitude A', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+      { id: 'tau', sym: 'τ', label: 'half-width τ', min: 0.4, max: 4, step: 0.05, default: 1 },
+    ],
+    yRanges: {
+      twopi_nu:   { tri: [-0.3, 3], sinc2: [-0.5, 6] },
+      omega_asym: { tri: [-0.3, 3], sinc2: [-0.5, 6] },
+      omega_sym:  { tri: [-0.3, 3], sinc2: [-0.3, 4] },
+    },
+    build(conv, inputSide, p) {
+      const C = CONV[conv];
+      const { A, tau } = p;
+      const yR = this.yRanges[conv];
+      const triRepr = (varSym) => ({
+        type: 'curve',
+        latex: `A\\,\\mathrm{tri}\\!\\left(\\dfrac{${varSym}}{\\tau}\\right)`,
+        fn: x => Math.abs(x) < tau ? A*(1 - Math.abs(x)/tau) : 0,
+        xLabel: varSym,
+        xTicks: [{ x: -tau, label: `-${fmt(tau)}` }, { x: tau, label: fmt(tau) }],
+        yMin: yR.tri[0], yMax: yR.tri[1],
+        yMarker: { y: A, label: fmt(A) },
+      });
+      let sinc2Repr;
+      if (conv === 'twopi_nu') {
+        const peak = A*tau;
+        sinc2Repr = (varSym) => ({
+          type: 'curve',
+          latex: `A\\tau\\,\\mathrm{sinc}^{2}(\\tau\\,${varSym})`,
+          fn: x => peak * sinc(tau*x)**2,
+          xLabel: varSym,
+          xTicks: [
+            { x: -1/tau, label: `-${fmt(1/tau)}` },
+            { x:  1/tau, label: fmt(1/tau) },
+            { x:  2/tau, label: fmt(2/tau) },
+          ],
+          yMin: yR.sinc2[0], yMax: yR.sinc2[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      } else if (conv === 'omega_asym') {
+        const peak = A*tau;
+        sinc2Repr = (varSym) => ({
+          type: 'curve',
+          latex: `A\\tau\\left(\\dfrac{\\sin(${varSym}\\tau/2)}{${varSym}\\tau/2}\\right)^{2}`,
+          fn: x => peak * sincu(x*tau/2)**2,
+          xLabel: varSym,
+          xTicks: [
+            { x: -TAU/tau, label: `-${fmt(TAU/tau)}` },
+            { x:  TAU/tau, label: fmt(TAU/tau) },
+          ],
+          yMin: yR.sinc2[0], yMax: yR.sinc2[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      } else {
+        const peak = A*tau/SQRT_TAU;
+        sinc2Repr = (varSym) => ({
+          type: 'curve',
+          latex: `\\dfrac{A\\tau}{\\sqrt{2\\pi}}\\left(\\dfrac{\\sin(${varSym}\\tau/2)}{${varSym}\\tau/2}\\right)^{2}`,
+          fn: x => peak * sincu(x*tau/2)**2,
+          xLabel: varSym,
+          xTicks: [
+            { x: -TAU/tau, label: `-${fmt(TAU/tau)}` },
+            { x:  TAU/tau, label: fmt(TAU/tau) },
+          ],
+          yMin: yR.sinc2[0], yMax: yR.sinc2[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      }
+      const time = (this.sides.time.fn === 'triangle') ? triRepr('t') : sinc2Repr('t');
+      const freq = (this.sides.freq.fn === 'triangle') ? triRepr(C.fvar) : sinc2Repr(C.fvar);
+      return { time, freq };
+    },
+  },
+
+  // -------------------------------------------------- Gaussian ↔ Gaussian
+  gauss_gauss: {
+    label: 'Gaussian ↔ Gaussian',
+    sides: {
+      time: { fn: 'gauss', label: 'Gaussian' },
+      freq: { fn: 'gauss', label: 'Gaussian' },
+    },
+    params: [
+      { id: 'A', sym: 'A', label: 'amplitude A', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+      { id: 'sigma', sym: 'σ', label: 'width σ', min: 0.3, max: 3, step: 0.05, default: 1 },
+    ],
+    yRanges: {
+      twopi_nu:   { time: [-0.3, 3], freq: [-0.5, 7] },
+      omega_asym: { time: [-0.3, 3], freq: [-0.5, 7] },
+      omega_sym:  { time: [-0.3, 3], freq: [-0.3, 3] },
+    },
+    build(conv, inputSide, p) {
+      const C = CONV[conv];
+      const { A, sigma } = p;
+      const yR = this.yRanges[conv];
+      // "Input" gaussian: A·e^(-x²/(2σ²)); output gaussian depends on conv.
+      const inputGauss = (varSym, yLim) => ({
+        type: 'curve',
+        latex: `A\\, e^{-${varSym}^{2}/(2\\sigma^{2})}`,
+        fn: x => A * Math.exp(-x*x/(2*sigma*sigma)),
+        xLabel: varSym,
+        xTicks: [{ x: -sigma, label: `-${fmt(sigma)}` }, { x: sigma, label: fmt(sigma) }],
+        yMin: yLim[0], yMax: yLim[1],
+        yMarker: { y: A, label: fmt(A) },
+      });
+      let outputGauss;
+      if (conv === 'twopi_nu') {
+        const peak = A * sigma * SQRT_TAU;
+        outputGauss = (varSym, yLim) => ({
+          type: 'curve',
+          latex: `A\\sigma\\sqrt{2\\pi}\\, e^{-2\\pi^{2}\\sigma^{2}${varSym}^{2}}`,
+          fn: x => peak * Math.exp(-2*Math.PI*Math.PI*sigma*sigma*x*x),
+          xLabel: varSym,
+          xTicks: [{ x: -1/(TAU*sigma), label: `-${fmt(1/(TAU*sigma))}` }, { x:  1/(TAU*sigma), label: fmt(1/(TAU*sigma)) }],
+          yMin: yLim[0], yMax: yLim[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      } else if (conv === 'omega_asym') {
+        const peak = A * sigma * SQRT_TAU;
+        outputGauss = (varSym, yLim) => ({
+          type: 'curve',
+          latex: `A\\sigma\\sqrt{2\\pi}\\, e^{-\\sigma^{2}${varSym}^{2}/2}`,
+          fn: x => peak * Math.exp(-sigma*sigma*x*x/2),
+          xLabel: varSym,
+          xTicks: [{ x: -1/sigma, label: `-${fmt(1/sigma)}` }, { x: 1/sigma, label: fmt(1/sigma) }],
+          yMin: yLim[0], yMax: yLim[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      } else {
+        const peak = A * sigma;
+        outputGauss = (varSym, yLim) => ({
+          type: 'curve',
+          latex: `A\\sigma\\, e^{-\\sigma^{2}${varSym}^{2}/2}`,
+          fn: x => peak * Math.exp(-sigma*sigma*x*x/2),
+          xLabel: varSym,
+          xTicks: [{ x: -1/sigma, label: `-${fmt(1/sigma)}` }, { x: 1/sigma, label: fmt(1/sigma) }],
+          yMin: yLim[0], yMax: yLim[1],
+          yMarker: { y: peak, label: fmt(peak) },
+        });
+      }
+      // Whichever side is the input gets `inputGauss`; the other gets `outputGauss`.
+      const time = inputSide === 'time' ? inputGauss('t', yR.time) : outputGauss('t', yR.time);
+      const freq = inputSide === 'freq' ? inputGauss(C.fvar, yR.freq) : outputGauss(C.fvar, yR.freq);
+      return { time, freq };
+    },
+  },
+
+  // -------------------------------------------------- δ ↔ constant
+  delta_const: {
+    label: 'δ ↔ constant',
+    sides: {
+      time: { fn: 'delta', label: 'δ (Dirac delta)' },
+      freq: { fn: 'constant', label: 'constant' },
+    },
+    params: [
+      { id: 'A', sym: 'A', label: 'amplitude A', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+    ],
+    yRanges: {
+      twopi_nu:   { delta: [-0.3, 3], const: [-0.3, 3] },
+      omega_asym: { delta: [-0.3, 3], const: [-0.3, 3] },
+      omega_sym:  { delta: [-0.3, 3], const: [-0.3, 3] },
+    },
+    build(conv, inputSide, p) {
+      const C = CONV[conv];
+      const { A } = p;
+      const yR = this.yRanges[conv];
+      // delta on whichever side: A·δ(var)
+      const deltaRepr = (varSym) => ({
+        type: 'impulses',
+        latex: `A\\,\\delta(${varSym})`,
+        impulses: [{ x: 0, weight: A }],
+        xLabel: varSym,
+        xTicks: [],
+        yMin: yR.delta[0], yMax: yR.delta[1],
+      });
+      // constant on whichever side: value depends on conv & which side is input
+      // If time is delta (input) and freq is constant (computed):
+      //   - Conv 1: f̂(ν) = A
+      //   - Conv 2 (asym): f̂(ω) = A
+      //   - Conv 3 (sym): f̂(ω) = A/√(2π)
+      // If freq is delta (input) and time is constant (computed):
+      //   - Conv 1: f(t) = A  (inverse FT of δ(ν))
+      //   - Conv 2: f(t) = A/(2π)
+      //   - Conv 3: f(t) = A/√(2π)
+      let constRepr;
+      if (this.sides.time.fn === 'delta' /* T2F */) {
+        // input is time=delta, output is freq=constant
+        let val, latex;
+        if (conv === 'twopi_nu') { val = A; latex = 'A'; }
+        else if (conv === 'omega_asym') { val = A; latex = 'A'; }
+        else { val = A/SQRT_TAU; latex = '\\dfrac{A}{\\sqrt{2\\pi}}'; }
+        constRepr = (varSym) => ({
+          type: 'constant',
+          latex,
+          value: val,
+          xLabel: varSym,
+          xTicks: [],
+          yMin: yR.const[0], yMax: yR.const[1],
+          yMarker: { y: val, label: fmt(val) },
+        });
+      } else {
+        // input is freq=delta, output is time=constant
+        let val, latex;
+        if (conv === 'twopi_nu') { val = A; latex = 'A'; }
+        else if (conv === 'omega_asym') { val = A/TAU; latex = '\\dfrac{A}{2\\pi}'; }
+        else { val = A/SQRT_TAU; latex = '\\dfrac{A}{\\sqrt{2\\pi}}'; }
+        constRepr = (varSym) => ({
+          type: 'constant',
+          latex,
+          value: val,
+          xLabel: varSym,
+          xTicks: [],
+          yMin: yR.const[0], yMax: yR.const[1],
+          yMarker: { y: val, label: fmt(val) },
+        });
+      }
+      const time = this.sides.time.fn === 'delta' ? deltaRepr('t') : constRepr('t');
+      const freq = this.sides.freq.fn === 'delta' ? deltaRepr(C.fvar) : constRepr(C.fvar);
+      return { time, freq };
+    },
+  },
+
+  // -------------------------------------------------- cosine ↔ 2 impulses
+  cos_imp: {
+    label: 'Cosine ↔ 2 impulses',
+    sides: {
+      time: { fn: 'cosine', label: 'cosine' },
+      freq: { fn: 'two_impulses', label: '2 impulses' },
+    },
+    params: [
+      { id: 'A', sym: 'A', label: 'magnitude A', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+      { id: 'omega0', sym: 'ω₀', label: 'angular freq ω₀', min: 0.5, max: 10, step: 0.1, default: TAU },
+      { id: 'phi', sym: 'φ', label: 'phase φ', min: -Math.PI, max: Math.PI, step: 0.05, default: 0 },
+    ],
+    yRanges: {
+      twopi_nu:   { cos: [-3, 3], imp: [-0.3, 2] },
+      omega_asym: { cos: [-3, 3], imp: [-0.3, 9] },
+      omega_sym:  { cos: [-3, 3], imp: [-0.3, 4] },
+    },
+    build(conv, inputSide, p) {
+      const C = CONV[conv];
+      const { A, omega0, phi } = p;
+      const yR = this.yRanges[conv];
+      const phiTerm = phi !== 0 ? ' + \\varphi' : '';
+      const cosRepr = (varSym) => ({
+        type: 'curve',
+        latex: `A\\cos(\\omega_{0}\\,${varSym}${phiTerm})`,
+        fn: x => A * Math.cos(omega0*x + phi),
+        xLabel: varSym,
+        xTicks: [],
+        yMin: yR.cos[0], yMax: yR.cos[1],
+      });
+      // Two impulses: location & weight depend on convention
+      let loc, weight, weightLatex, posLatex;
+      if (conv === 'twopi_nu') {
+        loc = omega0 / TAU; weight = A/2;
+        weightLatex = '\\tfrac{A}{2}'; posLatex = '\\dfrac{\\omega_{0}}{2\\pi}';
+      } else if (conv === 'omega_asym') {
+        loc = omega0; weight = Math.PI*A;
+        weightLatex = '\\pi A'; posLatex = '\\omega_{0}';
+      } else {
+        loc = omega0; weight = A*Math.sqrt(Math.PI/2);
+        weightLatex = 'A\\sqrt{\\tfrac{\\pi}{2}}'; posLatex = '\\omega_{0}';
+      }
+      const impLatex = phi === 0
+        ? `${weightLatex}\\bigl[\\delta(\\cdot - ${posLatex}) + \\delta(\\cdot + ${posLatex})\\bigr]`
+        : `${weightLatex}\\bigl[e^{i\\varphi}\\delta(\\cdot - ${posLatex}) + e^{-i\\varphi}\\delta(\\cdot + ${posLatex})\\bigr]`;
+      const impRepr = (varSym) => ({
+        type: 'impulses',
+        latex: impLatex.replace(/\\cdot/g, varSym),
+        impulses: [{ x: -loc, weight }, { x: loc, weight }],
+        xLabel: varSym,
+        xTicks: [
+          { x: -loc, label: `-${fmt(loc)}` },
+          { x:  loc, label: fmt(loc) },
+        ],
+        yMin: yR.imp[0], yMax: yR.imp[1],
+      });
+      const time = this.sides.time.fn === 'cosine' ? cosRepr('t') : impRepr('t');
+      const freq = this.sides.freq.fn === 'cosine' ? cosRepr(C.fvar) : impRepr(C.fvar);
+      return { time, freq };
+    },
+  },
+
+  // -------------------------------------------------- Comb ↔ Comb
+  comb_comb: {
+    label: 'Comb ↔ Comb',
+    sides: {
+      time: { fn: 'comb', label: 'Dirac comb' },
+      freq: { fn: 'comb', label: 'Dirac comb' },
+    },
+    params: [
+      { id: 'A', sym: 'A', label: 'amplitude A', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+      { id: 'tau', sym: 'τ', label: 'period τ', min: 0.4, max: 3, step: 0.05, default: 1 },
+    ],
+    yRanges: {
+      twopi_nu:   { time: [-0.3, 3], freq: [-0.3, 6] },
+      omega_asym: { time: [-0.3, 3], freq: [-0.5, 18] },
+      omega_sym:  { time: [-0.3, 3], freq: [-0.3, 8] },
+    },
+    build(conv, inputSide, p) {
+      const C = CONV[conv];
+      const { A, tau } = p;
+      const yR = this.yRanges[conv];
+      // Input-side comb: A·Σ_n δ(var - n·τ)
+      const inputComb = (varSym, yLim) => {
+        const impulses = [];
+        for (let n = -10; n <= 10; n++) impulses.push({ x: n*tau, weight: A });
+        return {
+          type: 'impulses',
+          latex: `A\\sum_{n=-\\infty}^{\\infty}\\delta(${varSym} - n\\tau)`,
+          impulses,
+          xLabel: varSym,
+          xTicks: [{ x: -tau, label: `-${fmt(tau)}` }, { x: tau, label: fmt(tau) }, { x: 2*tau, label: fmt(2*tau) }],
+          yMin: yLim[0], yMax: yLim[1],
+        };
+      };
+      let outputSpacing, outputWeight, outputLatex;
+      // T2F (input=time=comb, output=freq=comb)
+      if (inputSide === 'time') {
+        if (conv === 'twopi_nu') {
+          outputSpacing = 1/tau; outputWeight = A/tau;
+          outputLatex = (v) => `\\dfrac{A}{\\tau}\\sum_{k=-\\infty}^{\\infty}\\delta(${v} - k/\\tau)`;
+        } else if (conv === 'omega_asym') {
+          outputSpacing = TAU/tau; outputWeight = TAU*A/tau;
+          outputLatex = (v) => `\\dfrac{2\\pi A}{\\tau}\\sum_{k=-\\infty}^{\\infty}\\delta(${v} - 2\\pi k/\\tau)`;
+        } else {
+          outputSpacing = TAU/tau; outputWeight = SQRT_TAU*A/tau;
+          outputLatex = (v) => `\\dfrac{\\sqrt{2\\pi}\\,A}{\\tau}\\sum_{k=-\\infty}^{\\infty}\\delta(${v} - 2\\pi k/\\tau)`;
+        }
+      } else {
+        // F2T (input=freq=comb, output=time=comb)
+        if (conv === 'twopi_nu') {
+          outputSpacing = 1/tau; outputWeight = A/tau;
+          outputLatex = (v) => `\\dfrac{A}{\\tau}\\sum_{n=-\\infty}^{\\infty}\\delta(${v} - n/\\tau)`;
+        } else if (conv === 'omega_asym') {
+          outputSpacing = TAU/tau; outputWeight = A/tau;
+          outputLatex = (v) => `\\dfrac{A}{\\tau}\\sum_{n=-\\infty}^{\\infty}\\delta(${v} - 2\\pi n/\\tau)`;
+        } else {
+          outputSpacing = TAU/tau; outputWeight = SQRT_TAU*A/tau;
+          outputLatex = (v) => `\\dfrac{\\sqrt{2\\pi}\\,A}{\\tau}\\sum_{n=-\\infty}^{\\infty}\\delta(${v} - 2\\pi n/\\tau)`;
+        }
+      }
+      const outputComb = (varSym, yLim) => {
+        const impulses = [];
+        for (let n = -20; n <= 20; n++) impulses.push({ x: n*outputSpacing, weight: outputWeight });
+        return {
+          type: 'impulses',
+          latex: outputLatex(varSym),
+          impulses,
+          xLabel: varSym,
+          xTicks: [
+            { x: -outputSpacing, label: `-${fmt(outputSpacing)}` },
+            { x:  outputSpacing, label: fmt(outputSpacing) },
+            { x:  2*outputSpacing, label: fmt(2*outputSpacing) },
+          ],
+          yMin: yLim[0], yMax: yLim[1],
+        };
+      };
+      const time = inputSide === 'time' ? inputComb('t', yR.time) : outputComb('t', yR.time);
+      const freq = inputSide === 'freq' ? inputComb(C.fvar, yR.freq) : outputComb(C.fvar, yR.freq);
+      return { time, freq };
+    },
+  },
+};
+
+// ============================================================
+// FUNCTION → PAIR LOOKUP
+// Given a function name (rect, sinc, gauss, delta, constant, etc.),
+// find which pair it belongs to and which side of that pair it occupies.
+// ============================================================
+const FN_INDEX = {};  // fn → { pairId, naturalSide }
+for (const [pid, P] of Object.entries(PAIRS)) {
+  if (!FN_INDEX[P.sides.time.fn]) FN_INDEX[P.sides.time.fn] = { pid, side: 'time', label: P.sides.time.label };
+  if (!FN_INDEX[P.sides.freq.fn]) FN_INDEX[P.sides.freq.fn] = { pid, side: 'freq', label: P.sides.freq.label };
+}
+// All 10 function names, ordered for dropdowns
+const FN_ORDER = ['rect', 'triangle', 'gauss', 'delta', 'constant', 'cosine', 'two_impulses', 'comb', 'sinc', 'sinc2'];
+const FN_LABEL = {
+  rect: 'rect', triangle: 'Triangle', gauss: 'Gaussian', delta: 'δ (Dirac delta)',
+  constant: 'constant', cosine: 'cosine', two_impulses: '2 impulses',
+  comb: 'Dirac comb', sinc: 'Sinc', sinc2: 'Sinc²',
+};
+
+// ============================================================
+// PROPERTIES — symbolic pairs choosable from the same dropdowns.
+// Each property returns its time/freq latex given the convention.
+// ============================================================
+const PROP_ORDER = ['linearity', 'shift', 'modulation', 'scaling', 'conv_mult', 'mult_conv', 'derivative', 'conjugation'];
+const PROP_LABEL = {
+  linearity: 'linearity',
+  shift: 'time shift',
+  modulation: 'modulation',
+  scaling: 'time scaling',
+  conv_mult: 'convolution',
+  mult_conv: 'multiplication',
+  derivative: 'differentiation',
+  conjugation: 'conjugation',
+};
+function buildPropPair(propName, conv) {
+  const C = CONV[conv];
+  const v = C.fvar;
+  const isNu = conv === 'twopi_nu';
+  switch (propName) {
+    case 'linearity':
+      return { time: 'a\\,f(t) + b\\,g(t)', freq: `a\\,\\hat f(${v}) + b\\,\\hat g(${v})` };
+    case 'shift':
+      return {
+        time: 'f(t - t_0)',
+        freq: (isNu ? `e^{-2\\pi i\\,${v}\\, t_0}` : `e^{-i\\,\\omega\\, t_0}`) + `\\,\\hat f(${v})`,
+      };
+    case 'modulation':
+      return {
+        time: (isNu ? `e^{2\\pi i\\,\\nu_0\\, t}` : `e^{i\\,\\omega_0\\, t}`) + '\\,f(t)',
+        freq: `\\hat f(${v} - ${isNu ? '\\nu_0' : '\\omega_0'})`,
+      };
+    case 'scaling':
+      return { time: 'f(a\\,t)', freq: `\\dfrac{1}{|a|}\\,\\hat f\\!\\left(\\dfrac{${v}}{a}\\right)` };
+    case 'conv_mult': {
+      let pre = '';
+      if (conv === 'omega_sym') pre = '\\sqrt{2\\pi}\\,';
+      return { time: '(f * g)(t)', freq: `${pre}\\hat f(${v})\\,\\hat g(${v})` };
+    }
+    case 'mult_conv': {
+      let pre = '';
+      if (conv === 'omega_asym') pre = '\\dfrac{1}{2\\pi}\\,';
+      else if (conv === 'omega_sym') pre = '\\dfrac{1}{\\sqrt{2\\pi}}\\,';
+      return { time: 'f(t)\\,g(t)', freq: `${pre}(\\hat f * \\hat g)(${v})` };
+    }
+    case 'derivative':
+      return {
+        time: '\\dfrac{d f}{d t}',
+        freq: (isNu ? '2\\pi i\\,\\nu' : 'i\\,\\omega') + `\\,\\hat f(${v})`,
+      };
+    case 'conjugation':
+      return { time: '\\overline{f(t)}', freq: `\\overline{\\hat f(-${v})}` };
+  }
+}
+
+// ============================================================
+// FT integral definition for the current convention
+// ============================================================
+function ftDefLatex(conv) {
+  if (conv === 'twopi_nu') return `\\hat f(\\nu) \\,=\\, \\int_{-\\infty}^{\\infty} f(t)\\, e^{-2\\pi i\\,\\nu\\, t}\\, dt`;
+  if (conv === 'omega_asym') return `\\hat f(\\omega) \\,=\\, \\int_{-\\infty}^{\\infty} f(t)\\, e^{-i\\,\\omega\\, t}\\, dt`;
+  return `\\hat f(\\omega) \\,=\\, \\dfrac{1}{\\sqrt{2\\pi}} \\int_{-\\infty}^{\\infty} f(t)\\, e^{-i\\,\\omega\\, t}\\, dt`;
+}
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+  conv: 'twopi_nu',
+  kind: 'pair',        // 'pair' | 'property'
+  pair: 'rect_sinc',
+  prop: 'linearity',   // active property when kind === 'property'
+  inputSide: 'time',
+  paramsByPair: {},
+};
+// Initialize defaults
+for (const [pid, P] of Object.entries(PAIRS)) {
+  state.paramsByPair[pid] = {};
+  for (const pr of P.params) state.paramsByPair[pid][pr.id] = pr.default;
+}
+
+// Helper: When user picks fnName on side `side`, determine:
+//  - which pair this belongs to
+//  - whether the pair's "sides" mapping needs to be flipped
+// Each pair has a default sides mapping. If user picks rect on time-side, no change.
+// If user picks rect on freq-side, the pair's sides need to be flipped: freq=rect, time=sinc.
+function selectFunction(fnName, side) {
+  const info = FN_INDEX[fnName];
+  if (!info) return;
+  const pair = PAIRS[info.pid];
+  // Reset to default sides for this pair
+  // Each pair has a "natural" mapping (defined statically). If user picked a function
+  // whose natural side differs from where they picked it, swap the sides.
+  // Reconstruct sides from natural definitions:
+  const naturalSides = {
+    rect_sinc:    { time: { fn: 'rect',     label: 'rect' },           freq: { fn: 'sinc',     label: 'Sinc' } },
+    tri_sinc2:    { time: { fn: 'triangle', label: 'Triangle' },       freq: { fn: 'sinc2',    label: 'Sinc²' } },
+    gauss_gauss:  { time: { fn: 'gauss',    label: 'Gaussian' },       freq: { fn: 'gauss',    label: 'Gaussian' } },
+    delta_const:  { time: { fn: 'delta',    label: 'δ (Dirac delta)' },freq: { fn: 'constant', label: 'constant' } },
+    cos_imp:      { time: { fn: 'cosine',   label: 'cosine' },         freq: { fn: 'two_impulses', label: '2 impulses' } },
+    comb_comb:    { time: { fn: 'comb',     label: 'Dirac comb' },     freq: { fn: 'comb',     label: 'Dirac comb' } },
+  };
+  pair.sides = naturalSides[info.pid];
+  // If user picked fnName on a side that doesn't match its natural side, flip
+  if (info.side !== side) {
+    pair.sides = { time: naturalSides[info.pid].freq, freq: naturalSides[info.pid].time };
+  }
+  state.pair = info.pid;
+  state.inputSide = side;
+  // Reset params to defaults for this pair (keep simple)
+  // Actually preserve them so user doesn't lose work when flipping
+  // (the params live per-pair, not per-direction)
+}
+
+// ============================================================
+// PLOT RENDERING
+// ============================================================
+function clearSvg(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+function svgEl(tag, attrs={}) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+function drawPlot(svg, repr, xRange) {
+  clearSvg(svg);
+  const W = 600, H = 230;
+  const PAD_L = 30, PAD_R = 40, PAD_T = 18, PAD_B = 30;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  const xMin = xRange[0], xMax = xRange[1];
+  const yMin = repr.yMin, yMax = repr.yMax;
+
+  const xToPix = x => PAD_L + plotW * (x - xMin) / (xMax - xMin);
+  const yToPix = y => PAD_T + plotH * (yMax - y) / (yMax - yMin);
+  const x0 = xToPix(0);
+  const y0 = yToPix(0);
+
+  // Subtle reference frame: just axes
+  // x-axis with arrow
+  const arrowSize = 5;
+  const xAxisEnd = PAD_L + plotW;
+  svg.appendChild(svgEl('line', { x1: PAD_L, y1: y0, x2: xAxisEnd, y2: y0, class: 'axis' }));
+  svg.appendChild(svgEl('polygon', {
+    points: `${xAxisEnd},${y0} ${xAxisEnd-arrowSize},${y0-arrowSize} ${xAxisEnd-arrowSize},${y0+arrowSize}`,
+    class: 'arrowhead',
+  }));
+  // y-axis: subtle reference line, no arrowhead (so it doesn't compete with central impulses or curves)
+  const yAxisTop = PAD_T + 4;
+  const yAxisBot = Math.min(PAD_T + plotH, y0 + 4);
+  svg.appendChild(svgEl('line', { x1: x0, y1: yAxisBot, x2: x0, y2: yAxisTop, class: 'yaxis' }));
+
+  // x-axis label
+  const xL = svgEl('text', {
+    x: xAxisEnd + 12, y: y0 + 4,
+    class: 'axislabel', 'text-anchor': 'start',
+  });
+  xL.textContent = (repr.xLabel || '').replace(/\\nu/g, 'ν').replace(/\\omega/g, 'ω');
+  svg.appendChild(xL);
+
+  // x-axis ticks
+  if (repr.xTicks) {
+    for (const tk of repr.xTicks) {
+      const px = xToPix(tk.x);
+      if (px < PAD_L - 1 || px > xAxisEnd + 1) continue;
+      svg.appendChild(svgEl('line', { x1: px, y1: y0-3, x2: px, y2: y0+3, class: 'tick' }));
+      const lbl = svgEl('text', {
+        x: px, y: y0 + 16, class: 'ticklabel', 'text-anchor': 'middle',
+      });
+      lbl.textContent = (tk.label || '').replace(/-/g, '−');
+      svg.appendChild(lbl);
+    }
+  }
+  // y-axis peak label
+  if (repr.yMarker) {
+    const ym = repr.yMarker;
+    const py = yToPix(ym.y);
+    if (py >= PAD_T - 1 && py <= PAD_T + plotH + 1) {
+      svg.appendChild(svgEl('line', { x1: x0-3, y1: py, x2: x0+3, y2: py, class: 'tick' }));
+      const lbl = svgEl('text', {
+        x: x0 - 7, y: py + 4, class: 'ticklabel', 'text-anchor': 'end',
+      });
+      lbl.textContent = ym.label || '';
+      svg.appendChild(lbl);
+    }
+  }
+
+  // Draw content
+  if (repr.type === 'curve') {
+    const N = 600;
+    const pts = [];
+    let prev = null;
+    for (let i = 0; i <= N; i++) {
+      const x = xMin + (xMax - xMin) * i / N;
+      const y = repr.fn(x);
+      if (!Number.isFinite(y)) { prev = null; continue; }
+      // Clip y to plot range with break
+      const py = yToPix(y);
+      if (py < PAD_T - 50 || py > PAD_T + plotH + 50) { prev = null; continue; }
+      pts.push([xToPix(x), py]);
+    }
+    if (pts.length > 1) {
+      const path = pts.map((p,i) => (i===0?'M':'L') + `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
+      svg.appendChild(svgEl('path', { d: path, class: 'curve' }));
+    }
+  } else if (repr.type === 'impulses') {
+    for (const imp of repr.impulses) {
+      const px = xToPix(imp.x);
+      if (px < PAD_L - 2 || px > xAxisEnd + 2) continue;
+      const py = yToPix(imp.weight);
+      // Clip to top
+      const topY = Math.max(py, PAD_T + 4);
+      const isClipped = py < PAD_T + 4;
+      svg.appendChild(svgEl('line', { x1: px, y1: y0, x2: px, y2: topY, class: 'impulse-line' }));
+      // Arrowhead
+      svg.appendChild(svgEl('polygon', {
+        points: `${px},${topY-1} ${px-4},${topY+6} ${px+4},${topY+6}`,
+        class: 'impulse-head',
+      }));
+      // If clipped, render a small "exceeds" indicator
+      if (isClipped) {
+        svg.appendChild(svgEl('text', {
+          x: px, y: PAD_T - 3, class: 'ticklabel', 'text-anchor': 'middle',
+          fill: 'var(--accent)', 'font-size': '10px',
+        })).textContent = '↑';
+      }
+    }
+  } else if (repr.type === 'constant') {
+    const v = repr.value;
+    const py = yToPix(v);
+    if (py >= PAD_T && py <= PAD_T + plotH) {
+      svg.appendChild(svgEl('line', { x1: PAD_L, y1: py, x2: xAxisEnd, y2: py, class: 'curve' }));
+    }
+  }
+}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+function rebuildSelectsAndParams() {
+  const timeSelect = document.getElementById('time-select');
+  const freqSelect = document.getElementById('freq-select');
+  // Populate options once (with optgroups: functions + properties)
+  if (!timeSelect.options.length) {
+    for (const select of [timeSelect, freqSelect]) {
+      const fnGroup = document.createElement('optgroup');
+      fnGroup.label = 'Functions';
+      for (const fn of FN_ORDER) {
+        const o = document.createElement('option');
+        o.value = `fn:${fn}`;
+        o.textContent = FN_LABEL[fn];
+        fnGroup.appendChild(o);
+      }
+      select.appendChild(fnGroup);
+      const propGroup = document.createElement('optgroup');
+      propGroup.label = 'Properties';
+      for (const pn of PROP_ORDER) {
+        const o = document.createElement('option');
+        o.value = `prop:${pn}`;
+        o.textContent = PROP_LABEL[pn];
+        propGroup.appendChild(o);
+      }
+      select.appendChild(propGroup);
+    }
+  }
+  // Set current dropdown values from state
+  if (state.kind === 'pair') {
+    const pair = PAIRS[state.pair];
+    timeSelect.value = `fn:${pair.sides.time.fn}`;
+    freqSelect.value = `fn:${pair.sides.freq.fn}`;
+  } else {
+    timeSelect.value = `prop:${state.prop}`;
+    freqSelect.value = `prop:${state.prop}`;
+  }
+
+  // Rebuild parameter sliders only in pair mode
+  const grid = document.getElementById('param-grid');
+  grid.innerHTML = '';
+  if (state.kind === 'pair') {
+    const pair = PAIRS[state.pair];
+    for (const pr of pair.params) {
+      const row = document.createElement('div');
+      row.className = 'param-row';
+      const label = document.createElement('div');
+      label.className = 'param-label';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = pr.label;
+      const val = document.createElement('span');
+      val.className = 'value';
+      val.textContent = fmt(state.paramsByPair[state.pair][pr.id]);
+      label.appendChild(name); label.appendChild(val);
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = pr.min; slider.max = pr.max; slider.step = pr.step;
+      slider.value = state.paramsByPair[state.pair][pr.id];
+      slider.addEventListener('input', () => {
+        const v = parseFloat(slider.value);
+        state.paramsByPair[state.pair][pr.id] = v;
+        val.textContent = fmt(v);
+        render();
+      });
+      row.appendChild(label); row.appendChild(slider);
+      grid.appendChild(row);
+    }
+  }
+
+  // Side-state classes
+  const timeSide = document.getElementById('time-side');
+  const freqSide = document.getElementById('freq-side');
+  timeSide.classList.toggle('is-input', state.kind === 'pair' && state.inputSide === 'time');
+  freqSide.classList.toggle('is-input', state.kind === 'pair' && state.inputSide === 'freq');
+  timeSide.classList.toggle('is-prop', state.kind === 'property');
+  freqSide.classList.toggle('is-prop', state.kind === 'property');
+  document.getElementById('time-plot').classList.toggle('hidden', state.kind === 'property');
+  document.getElementById('freq-plot').classList.toggle('hidden', state.kind === 'property');
+  document.querySelector('.params-panel').classList.toggle('hidden', state.kind === 'property');
+  // Input-side label (pair mode)
+  if (state.kind === 'pair') {
+    document.getElementById('input-side-name').textContent = state.inputSide;
+  }
+}
+
+function render() {
+  const C = CONV[state.conv];
+
+  // FT definition (always shown)
+  renderEq(document.getElementById('ft-def'), ftDefLatex(state.conv), false);
+
+  // Convention button active state
+  document.querySelectorAll('#conv-group label').forEach(l => {
+    const inp = l.querySelector('input');
+    l.classList.toggle('is-active', inp.checked);
+  });
+
+  if (state.kind === 'property') {
+    // Property mode: just equations, no plots, no params
+    const expr = buildPropPair(state.prop, state.conv);
+    renderEq(document.getElementById('time-eq'), expr.time, true);
+    renderEq(document.getElementById('freq-eq'), expr.freq, true);
+    return;
+  }
+
+  // Pair mode
+  const pair = PAIRS[state.pair];
+  const { time, freq } = pair.build(state.conv, state.inputSide, state.paramsByPair[state.pair]);
+  renderEq(document.getElementById('time-eq'), `f(t) = ${time.latex}`, false);
+  renderEq(document.getElementById('freq-eq'), `\\hat f(${C.fvar}) = ${freq.latex}`, false);
+  drawPlot(document.getElementById('time-plot'), time, TIME_RANGE);
+  drawPlot(document.getElementById('freq-plot'), freq, C.fxRange);
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+document.getElementById('conv-group').addEventListener('change', e => {
+  if (e.target.name === 'conv') {
+    state.conv = e.target.value;
+    render();
+  }
+});
+function handleSelect(rawValue, side) {
+  // rawValue is prefixed: "fn:rect" or "prop:linearity"
+  const [kind, name] = rawValue.split(':');
+  if (kind === 'prop') {
+    state.kind = 'property';
+    state.prop = name;
+  } else {
+    state.kind = 'pair';
+    selectFunction(name, side);
+  }
+  rebuildSelectsAndParams();
+  render();
+}
+document.getElementById('time-select').addEventListener('change', e => handleSelect(e.target.value, 'time'));
+document.getElementById('freq-select').addEventListener('change', e => handleSelect(e.target.value, 'freq'));
+
+function init() {
+  if (typeof katex === 'undefined') { setTimeout(init, 50); return; }
+  rebuildSelectsAndParams();
+  render();
+}
+init();
+</script>
+</body>
+</html>

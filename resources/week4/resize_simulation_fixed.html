@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://distill.pub/template.v2.js"></script>
+  <script src="https://d3js.org/d3.v4.min.js"> </script>
+  <!-- common.js inlined so this file is self-contained and works from any folder -->
+<script type="text/javascript">
+function proj_coord(x, scale, mode='naive', in_sz=null, out_sz=null)  {
+    if(mode == 'naive') {fix = 0} 
+    else if(mode == 'scale_fix') {fix = 0.5 * (1 / scale - 1)}
+    else if(mode == 'proposed') {fix = 0.5 * (in_sz - 1) - (0.5 / scale) * (out_sz - 1)}
+    else {console.log("must choose either naive, scale_fix or proposed")}
+
+    return x / scale + fix;
+}
+
+
+function get_coords(out_sz_x, out_sz_y, in_sz_x=null, in_sz_y=null, scale_x=1, scale_y=1, vis_scale=50, vis_shift_x=0, vis_shift_y=0, mode='naive') {
+    var coords = new Array();
+    for(var x = 0; x < out_sz_x; x++)
+        for (var y = 0; y < out_sz_y; y++)
+            coords[x * out_sz_y + y] = [proj_coord(x, scale_x, mode, in_sz_x, out_sz_x) * vis_scale + vis_shift_x, 
+                                        proj_coord(y, scale_y, mode, in_sz_y, out_sz_y) * vis_scale + vis_shift_y];
+    return coords;
+}
+
+
+function vis_pixels(out_sz_x=null, out_sz_y=null, coords=null, coords_2=null, in_sz_x=null, in_sz_y=null, 
+                    scale_x=1, scale_y=1, circles, shades, grid, lines, svg, vis_scale=50, color='red', color_2='green',
+                    support_x=null, support_y=null, mode='naive', shift_to_center=true) 
+{
+    if(coords === null) {
+        if(shift_to_center) {
+            center_shift = centerShift(in_sz_x, in_sz_y, vis_scale, svg)
+            vis_shift_x = center_shift[0]
+            vis_shift_y = center_shift[1]
+        } else {
+            vis_shift_x = 0
+            vis_shift_y = 0
+        }
+
+        coords = get_coords(out_sz_x, out_sz_y, in_sz_x, in_sz_y, scale_x, scale_y, vis_scale, vis_shift_x, vis_shift_y, mode)
+    }
+    if(shades) {
+        svg.selectAll(".shades")
+        .data(coords)
+        .enter()
+            .append("rect")
+            .attr("class", "shades2")
+            .attr("x", function(d) {return d[0] - support_x / 2})
+            .attr("y", function(d) {return d[1] - support_y / 2})
+            .attr("fill", color)
+            .attr("width", support_x)
+            .attr("height", support_y)
+            .style("fill", "url(#radial-gradient)")
+            .attr("filter", "url(#blur)").style('pointer-events', 'none');
+
+        svg.selectAll(".shades2")
+            .data(coords)
+            .enter()
+                .append("rect")
+                .attr("class", "shades2")
+                .attr("x", function(d) {return d[0] - support_x / 2})
+                .attr("y", function(d) {return d[1] - support_y / 2})
+                .attr("fill", color)
+                .attr("width", support_x)
+                .attr("height", support_y)
+                .style("fill-opacity", 0.2)
+                .attr("filter", "url(#blur)").style('pointer-events', 'none');
+    }
+
+    if(circles) {
+        svg.selectAll(".circles")
+        .data(coords)
+        .enter()
+            .append("circle")
+                .attr("class", "circles")
+                .attr("r", 5)
+                .attr("fill", color)
+                .attr("cx", function(d) {return d[0]})
+                .attr("cy", function(d) {return d[1]})
+                .style("stroke", "black")
+                .attr("stroke-width", 2)
+    }
+
+    if(grid) {
+        svg.selectAll(".square")
+                .data(coords)
+                .enter()
+                    .append("rect")
+                    .attr("class","square")
+                    .attr("x", function(d) {return d[0] - 0.5 * vis_scale / scale_x})
+                    .attr("y", function(d) {return d[1] - 0.5 * vis_scale / scale_y})
+                    .attr("width", function(d) { return vis_scale / scale_x; })
+                    .attr("height", function(d) { return vis_scale / scale_y; })
+                    .style("fill", "transparent")
+                    .style("stroke", "grey").style('pointer-events', 'none');
+    }
+
+    if(lines) {
+        svg.selectAll(".circles2")
+        .data(coords_2)
+        .enter()
+            .append("circle")
+                .attr("class", "circles2")
+                .attr("r", 5)
+                .attr("fill", color_2)
+                .attr("cx", function(d) {return d[0]})
+                .attr("cy", function(d) {return d[1]})
+                .style("stroke", "black")
+                .attr("stroke-width", 2)
+
+        svg.selectAll(".lines")
+            .data(zip([coords, coords_2]))
+            .enter()
+            .append("line")
+                .attr("class", "lines")
+                .attr("x1", function(d) {return d[0][0]})
+                .attr("y1", function(d) {return d[0][1]})
+                .attr("x2", function(d) {return d[1][0]})
+                .attr("y2", function(d) {return d[1][1]})
+                .attr("stroke", "black")
+                .style("stroke-dasharray","5,5")
+    }
+
+}
+
+
+function centerShift(sz_x, sz_y, vis_scale, svg) {
+
+    grid_center_x = 0.5 * sz_x * vis_scale
+    grid_center_y = 0.5 * sz_y * vis_scale
+
+    svg_center_x = svg.attr("width") / 2
+    svg_center_y = svg.attr("height") / 2 
+
+    shift_x = svg_center_x - grid_center_x
+    shift_y = svg_center_y - grid_center_y
+
+    return [shift_x, shift_y];
+}
+
+function zip(arrays) {
+    return arrays[0].map(function(_,i){
+        return arrays.map(function(array){return array[i]})
+    });
+}
+
+function def_filters(svg) {
+    var filter = svg.append("defs")
+                            .append("filter")
+                                .attr("id", "blur")
+                            .append("feGaussianBlur")
+                                .attr("stdDeviation", 10);
+
+    var radialGradient = svg.append("defs")
+                                    .append("radialGradient")
+                                        .attr("id", "radial-gradient");
+
+    return radialGradient;                             
+}
+
+function update_filters(radialGradient, start_opa, stop_opa, color) {
+    radialGradient.selectAll("stop").remove()
+    radialGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", start_opa);
+
+    radialGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#fff")
+        .attr("stop-opacity", stop_opa);
+}
+</script>
+  <style></style>
+
+</head>
+
+<body>
+  <d-front-matter>
+    <script type="text/json">
+      {
+        "title": "Exploring and Rethinking Image Resizing",
+        "description": "Training an end-to-end differentiable, self-organising cellular automata model of morphogenesis, able to both grow and regenerate specific patterns.",
+        "authors": [
+          {
+            "author": "Assaf Shocher",
+            "authorURL": "http://www.wisdom.weizmann.ac.il/~/assafsho/",
+            "affiliation": "Weizmann Institute of Science",
+            "affiliationURL": "https://weizmann.ac.il/"
+          }
+        ],
+        "katex": {
+          "delimiters": [
+            {
+              "left": "$",
+              "right": "$",
+              "display": false
+            },
+            {
+              "left": "$$",
+              "right": "$$",
+              "display": true
+            }
+          ]
+        }
+      }
+    </script>
+  </d-front-matter>
+
+  <style>
+    /* ****************************************
+       * Thread Info
+       ******************************************/
+
+    .thread-info {
+      background-color: hsl(54, 78%, 96%);
+      border-left: solid hsl(54, 33%, 67%) 1px;
+      padding: 1em;
+      color: hsla(0, 0%, 0%, 0.67);
+    }
+
+    #thread-nav {
+      margin-top: 20;
+      margin-bottom: 1.5rem;
+      display: grid;
+      grid-template-columns: 45px 2fr 3fr;
+      grid-template-areas:
+        'thread-icon explanation explanation '
+        'thread-icon prev next';
+      grid-column-gap: 1.5em;
+    }
+
+    @media (min-width: 768px) {
+      #thread-nav {
+        grid-template-columns: 65px 3fr 2fr;
+      }
+    }
+
+    #thread-nav .thread-icon {
+      grid-area: thread-icon;
+      padding: 0.5em;
+      justify-self: center;
+    }
+
+    #thread-nav .explanation {
+      grid-area: explanation;
+      font-size: 85%;
+      color: hsl(0, 0%, 0.33);
+    }
+
+    #thread-nav .prev {
+      grid-area: prev;
+    }
+
+    #thread-nav .prev::before {
+      content: '← Previous Article';
+    }
+
+    #thread-nav .overview {
+      scroll-behavior: smooth;
+    }
+
+    #thread-nav .overview::before {
+      content: '↑';
+      white-space: nowrap;
+      margin-right: 0.5em;
+    }
+
+    #thread-nav .next {
+      grid-area: next;
+      scroll-behavior: smooth;
+    }
+
+    #thread-nav .next::before {
+      content: 'Next Article →';
+    }
+
+    #thread-nav .next::before,
+    #thread-nav .prev::before {
+      display: block;
+      white-space: nowrap;
+      padding: 0.5em 0;
+      font-size: 80%;
+      font-weight: bold;
+      margin-top: 0px;
+      margin-right: 0.5em;
+      text-transform: uppercase;
+    }
+
+    #thread-nav .prev,
+    #thread-nav .next,
+    #thread-nav .overview {
+      font-size: 80%;
+      line-height: 1.5em;
+      font-weight: 600;
+      border-bottom: none;
+      color: #2e6db7;
+      /* margin-top: 0.25em; */
+      letter-spacing: 0.25px;
+    }
+
+    figure {
+      text-align: center;
+      margin-bottom: 0.5em;
+      margin-top: 0.5em;
+    }
+    figure img {
+      max-width: 100%;
+      width: unset;
+    }
+    
+
+    /* TOC */
+    @media (max-width: 1000px) {
+      d-contents {
+        justify-self: start;
+        align-self: start;
+        grid-column-start: 2;
+        grid-column-end: 6;
+        padding-bottom: 0.5em;
+        margin-bottom: 1em;
+        padding-left: 0.25em;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        border-bottom-width: 1px;
+        border-bottom-style: solid;
+        border-bottom-color: rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    @media (min-width: 1000px) {
+      d-contents {
+        align-self: start;
+        grid-column-start: 1;
+        grid-column-end: 4;
+        justify-self: end;
+        padding-right: 3em;
+        padding-left: 2em;
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+        border-right-width: 1px;
+        border-right-style: solid;
+        border-right-color: rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    @media (min-width: 1180px) {
+      d-contents {
+        grid-column-start: 1;
+        grid-column-end: 4;
+        justify-self: end;
+        padding-right: 3em;
+        padding-left: 2em;
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+        border-right-width: 1px;
+        border-right-style: solid;
+        border-right-color: rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    d-contents nav h3 {
+      margin-top: 0;
+      margin-bottom: 1em;
+    }
+
+    d-contents nav a {
+      color: rgba(0, 0, 0, 0.8);
+      border-bottom: none;
+      text-decoration: none;
+    }
+
+    d-contents li {
+      list-style-type: none;
+    }
+
+    d-contents ul {
+      padding-left: 1em;
+    }
+
+    d-contents nav ul li {
+      margin-bottom: 0.25em;
+    }
+
+    d-contents nav a:hover {
+      text-decoration: underline solid rgba(0, 0, 0, 0.6);
+    }
+
+    d-contents nav ul {
+      margin-top: 0;
+      margin-bottom: 6px;
+    }
+
+    d-contents nav > div {
+      display: block;
+      outline: none;
+      margin-bottom: 0.5em;
+    }
+
+    d-contents nav > div > a {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    d-contents nav > div > a:hover,
+    d-contents nav > ul > li > a:hover {
+      text-decoration: none;
+    }
+
+    /* code blocks to margins */
+    @media (min-width: 1600px) {
+      d-code {
+        margin-top: -10px;
+        grid-column-start: 12;
+        grid-column-end: 14;
+      }
+    }
+    /* so title is on one line */
+    d-title h1,
+    d-title p {
+      grid-column: middle;
+    }
+  </style>
+  <script>
+    // hack to edit font size in code snippets. guaranteed a better way to do
+    // this, but I'm not a webdev
+    window.onload = function () {
+      setTimeout(() => {
+        document.querySelectorAll('d-code').forEach(function (e) {
+          e.shadowRoot.querySelector('#code-container').style.fontSize = '0.7em'
+        })
+      }, 3000)
+    }
+  </script>
+  <d-title>
+    <h1>Resizing simulation</h1>
+    <p></p>
+
+
+<style>
+#demo {
+    font-size: 14px;
+    user-select: none;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto auto;
+    grid-auto-flow: column;
+    row-gap: 10px;
+}
+
+.hint a {
+  color: inherit;
+}
+
+@media (min-width: 1000px) {
+  #demo {
+    grid-template-columns: 1fr 300px;
+    grid-template-rows: auto auto;
+  }
+  #demo-controls {
+    grid-row: 1/3;
+  }
+}
+
+#demo-canvas {
+    border: 1px solid lightgrey;
+    image-rendering: pixelated;
+    touch-action: none;
+    width: 100%;
+}
+
+#demo-controls {
+    line-height: 1em;
+    display: grid;
+    grid-template-columns: 120px auto;
+    grid-template-rows: auto 60px 80px 75px 1fr;
+    row-gap: 20px;
+    overflow: hidden;
+}
+
+@media (min-width: 1000px){
+  #demo-controls {
+    grid-template-rows: auto 60px 80px 100px 1fr;
+  }
+}
+
+#pattern-selector {
+    grid-column: 1/3;
+    display: grid;
+    grid-template-columns: repeat(5, auto);
+    justify-items: center;
+}
+@media (max-width: 1000px) and  (min-width: 500px) {
+  #pattern-selector {
+    grid-template-columns: repeat(10, auto);
+  }
+}
+
+
+@media (max-width: 350px) {
+  .hint a {
+    font-size: 75%;
+  }
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+}
+
+input[type=range]:focus {
+  outline: none; /* Removes the blue border. You should probably do some kind of focus styling for accessibility reasons though. */
+}
+
+input[type=range]::-ms-track {
+  width: 100%;
+  cursor: pointer;
+
+  /* Hides the slider so custom styles can be added */
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+
+/* Thumb */
+
+/* Special styling for WebKit/Blink */
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: steelblue;
+  cursor: pointer;
+  margin-top: -6px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+}
+
+/* All the same stuff for Firefox */
+input[type=range]::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: steelblue;
+  cursor: pointer;
+  border: none;
+}
+
+/* All the same stuff for IE */
+input[type=range]::-ms-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: grey;
+  cursor: pointer;
+}
+
+/* Track */
+
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 3px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  border: none;
+}
+
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 3px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  border: none;
+}
+
+input[type=range]::-ms-track {
+  width: 100%;
+  height: 3px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  border: none;
+}
+input[type=range]::-ms-fill-lower {
+  background: rgba(0, 0, 0, 0.1);
+}
+input[type=range]:focus::-ms-fill-lower {
+  background: rgba(0, 0, 0, 0.1);
+}
+input[type=range]::-ms-fill-upper {
+  background: rgba(0, 0, 0, 0.1);
+}
+input[type=range]:focus::-ms-fill-upper {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+input[type="radio"] {
+    background-color: steelblue;
+}
+
+
+</style>
+
+<style>
+    td.main {
+      border: 1px solid lightgrey;
+    }
+
+    .float-left {
+                    float:left;
+                    width:150px;
+                }
+
+    div.ex1 {
+  width:0px;
+  border: 3px solid #73AD21;
+}
+</style>
+<div></div><div></div>
+<div id="grid"></div>
+   
+    <table style="width:100%">
+        <tbody>
+            <td class="main" rowspan="0">
+                
+                
+                    <svg width="600" height="500" id = svg1></svg>
+
+            </td>
+            <td  rowspan="0">
+                
+                
+                <svg width="40" height="1" id = svg1></svg>
+
+            </td>
+            <td>
+                    
+                        <input type="radio" name="method" id="naive" checked>       
+                        <label for="naive" style="display: inline-block; width: 140px; text-align: left; color:red; font-size:24px;"checked>Naive</label><br>
+                        <input type="radio" name="method" id="scale_fix">
+                        <label for="scale_fix" style="display: inline-block; width: 170px; text-align: left; color:blue; font-size:24px;">Scale-Fix</label><br>
+                        <input type="radio" name="method" id="proposed">
+                        <label for="proposed" style="display: inline-block; width: 200px; text-align: left; color:green; font-size:24px;">Proposed-Fix</label><br>
+                        
+                        
+                    </td>
+                    <tr><td style="text-align: center;"   >
+                        <label for="in_sz_x" 
+                        style="display: inline-block; width: 125px; text-align: right">
+                        Input Size:   &nbsp&nbsp&nbsp&nbsp        X
+                        </label>
+                        <input type="number" min="1" max="10" id="in_sz_x" value="7">
+      
+                
+                        <label for="in_sz_y" 
+                        style="display: inline-block; width: 30px; text-align: right">
+                        Y
+                        </label>
+                        <input type="number" min="1" max="10" id="in_sz_y" value="7">
+                        <br>
+                
+                        <label for="out_sz_x" 
+                        style="display: inline-block; width: 125px; text-align: right">
+                        Output Size:   &nbsp&nbsp&nbsp&nbsp        X
+                        </label>
+                        <input type="number" min="1" max="20" id="out_sz_x" value="7">
+                
+                        <label for="out_sz_y" 
+                        style="display: inline-block; width: 30px; text-align: right">
+                        Y
+                        </label>
+                        <input type="number" min="1" max="20" id="out_sz_y" value="7">
+                        <br><br>
+                
+                        <label for="scale_x" 
+                        style="display: inline-block; width: 120px; text-align: right">
+                        scale_X = <span id="scale_x-value">…</span>
+                        </label>
+                        <input type="range" min="20" max="200" id="scale_x" value="100">
+                        <br>
+                        
+                
+                        <label for="scale_y" 
+                        style="display: inline-block; width: 120px; text-align: right">
+                        scale_Y = <span id="scale_y-value">…</span>
+                        </label>
+                        <input type="range" min="20" max="200" id="scale_y" value="100">
+                        <br><br>
+                
+                        <label for="support" 
+                        style="display: inline-block; width: 150px; text-align: right">
+                        Interp Support = <span id="support-value">…</span>
+                        </label>
+                        <input type="range" min="1" max="300" id="support" value="100">
+                        <br>
+
+                        <label for="int_support" 
+                        style="display: inline-block; width: 250px; text-align: right">
+                        Integer Interpolation Support
+                        </label>
+                        <input type="checkbox" id="int_support" checked>
+                        <br><br>
+                
+                        <label for="entangle" 
+                        style="display: inline-block; width: 240px; text-align: right">
+                        Entangle Output Size and Scale
+                        </label>
+                        <input type="checkbox" id="entangle" checked>
+                        <br><br>
+                
+                        <label for="antialiasing" 
+                        style="display: inline-block; width: 120px; text-align: right">
+                        Antialiasing
+                        </label>
+                        <input type="checkbox" id="antialiasing" checked>
+                        <br>
+
+                                                <svg width="310" height="1" id = space></svg>
+
+                    </td></tr>
+                    <tr><td >
+                        <div >
+                            <div class="float-left" id="disp_px" style="text-align: center;">Px = ------</div>
+                            <div class="float-left" id="disp_py" style="text-align: center;">Py = ------</div>
+                        </div>
+                    </td>
+                    </tr>
+                        <tr>
+                            <td>
+                        <div>
+                            <div class="float-left" id="disp_dx" style="text-align: center;">Dx = ------</div>
+                            <div class="float-left" id="disp_dy" style="text-align: center;">Dy = ------</div>
+                        </div>
+                    </tr>
+                        
+                        <svg width="310" height="1" id = space></svg>
+
+                    </td>
+                </tr>
+
+
+        </tbody>
+
+    </table>
+    <script>
+
+        var svg = d3.select("#svg1")
+                        .append("svg")
+                        .attr("height", 500)
+                        .attr("width", 600);
+
+        radialGradient = def_filters(svg)
+
+        var vis_scale = 50
+
+
+        d3.selectAll("#in_sz_x, #in_sz_y, #out_sz_x, #out_sz_y, #support, #scale_x, #scale_y, #naive, #scale_fix, #proposed, #antialiasing, #int_support").on("input", function() {
+            update(document.getElementById('in_sz_x').value, 
+                   document.getElementById('in_sz_y').value,
+                   document.getElementById('out_sz_x').value, 
+                   document.getElementById('out_sz_y').value,
+                   document.getElementById('scale_x').value, 
+                   document.getElementById('scale_y').value,
+                   document.getElementById('support').value,
+                   svg);
+        });
+        
+        naive.dispatchEvent(new Event("input"))
+       
+        // SAFETY NET: if the cursor leaves the SVG entirely, force a full cleanup.
+        // FIX: targeted cleanup, doesn't touch the grid.
+        svg.on("mouseleave", function() {
+            svg.selectAll("rect.hover-decoration").remove();
+            svg.selectAll(".in_pixels").remove();
+            svg.selectAll(".circles, .shades, .shades2")
+                .attr("opacity", null)
+                .style("pointer-events", null);
+            svg.selectAll(".circles").attr("r", "5");
+            d3.select("#disp_px").text("Px = -------")
+            d3.select("#disp_py").text("Py = -------")
+            d3.select("#disp_dx").text("Dx = -------")
+            d3.select("#disp_dy").text("Dy = -------")
+        });
+       
+        
+        
+        function update(in_sz_x, in_sz_y, out_sz_x, out_sz_y, scale_x, scale_y, support, svg)  {  
+            // scale the scale :)
+            scale_x = scale_x / 100
+            scale_y = scale_y / 100
+
+            // get shifts so that everything is in the center of the svg
+            center_shift = centerShift(in_sz_x, in_sz_y, vis_scale, svg)
+            shift_x = center_shift[0]
+            shift_y = center_shift[1]
+
+            // manage projection mmode
+            if(document.getElementById('naive').checked) {mode = 'naive'; color = 'red'} 
+            else if(document.getElementById('scale_fix').checked) {mode = 'scale_fix'; color = 'blue'}
+            else if(document.getElementById('proposed').checked) {mode = 'proposed'; color = 'green'} 
+            
+            // manage entanglement of scale and ousput size
+            if (document.getElementById('entangle').checked) {
+                if (out_sz_x * out_sz_y == svg.selectAll(".circles").size()) {
+                    out_sz_x = Math.ceil(scale_x * in_sz_x)
+                    out_sz_y = Math.ceil(scale_y * in_sz_y)
+                } else if (svg.selectAll("circle").size() > 0) {
+                    scale_x = out_sz_x / in_sz_x
+                    scale_y = out_sz_y / in_sz_y
+                }
+            }
+
+            // round interpolation support size if checked, to keep it integer
+            if (document.getElementById('int_support').checked) {
+                support = Math.round(support  / 50) * 50
+            }
+
+            // update supprot sizes in case of antialiasing
+            support_x = support
+            support_y = support
+            if (document.getElementById('antialiasing').checked) {
+                if(scale_x < 1) {support_x /= scale_x}
+                if(scale_y < 1) {support_y /= scale_y}
+            }
+
+            // adjust the presented inputs
+            d3.select("#scale_y-value").text(scale_y.toFixed(4));
+            d3.select("#scale_y").property("value", scale_y * 100);
+            d3.select("#scale_x-value").text(scale_x.toFixed(4));
+            d3.select("#scale_x").property("value", scale_x * 100);
+            d3.select("#support-value").text(support  / 50);
+            d3.select("#support").property("value", support);
+            d3.select("#out_sz_x").property("value", out_sz_x);
+            d3.select("#out_sz_y").property("value", out_sz_y);
+
+            // remove all elements on svg to create new ones
+            svg.selectAll("circle").remove();
+            svg.selectAll("rect").remove();
+        
+            // the shades are using some fill functions that are modified when mouseon, so need to be updated back
+            update_filters(radialGradient, "0.7", "0", color)
+
+            // main visualization function for showing the pixel symbols
+            vis_pixels(out_sz_x, out_sz_y, null, null, in_sz_x, in_sz_y, 
+                       scale_x, scale_y, true, true, false, false, svg, vis_scale, color, null,
+                       support_x, support_y, mode, true) 
+
+            // add hover attributes to the visualized pixels    
+            d3.selectAll(".circles")
+                    .on("mouseover", handleMouseOver)
+                    .on("mouseout", handleMouseOut)
+
+            // add input grid
+            vis_pixels(in_sz_x, in_sz_y, null, null, in_sz_x, in_sz_y, 
+                       1, 1, false, false, true, false, svg, vis_scale, null, null,
+                       null, null, 'naive', shift_to_center=true) 
+        }
+
+        
+
+        function handleMouseOver(d, i) {  // Add interactivity
+            // get needed inputs
+            in_sz_x = document.getElementById('in_sz_x').value
+            in_sz_y = document.getElementById('in_sz_y').value
+            support_x = document.getElementById('support').value
+            support_y = document.getElementById('support').value
+            scale_x = document.getElementById('scale_x').value / 100
+            scale_y = document.getElementById('scale_y').value / 100
+            
+            // update supprot sizes in case of antialiasing
+            if (document.getElementById('antialiasing').checked) {
+                if(scale_x < 1) {support_x /= scale_x}
+                if(scale_y < 1) {support_y /= scale_y}
+            }
+
+            // determine some basic properties
+            color = d3.select(this).attr("fill")
+            center_shift = centerShift(in_sz_x, in_sz_y, vis_scale, svg)
+            shift_x = center_shift[0]
+            shift_y = center_shift[1]
+            cx_raw = d3.select(this).attr("cx") 
+            cy_raw = d3.select(this).attr("cy") 
+            cx = (cx_raw - shift_x) / 50
+            cy = (cy_raw - shift_y) / 50
+
+            // FIX: defensive cleanup. Previous hover decorations may still be on the SVG if
+            // handleMouseOver got triggered again before mouseout fired. Remove any lingering
+            // gradient/blur rects and in_pixel circles before drawing new ones, so we never
+            // layer 2-3 colored rects on top of each other.
+            // NOTE: we only remove rects tagged with our class so we don't wipe the input grid.
+            svg.selectAll("rect.hover-decoration").remove();
+            svg.selectAll(".in_pixels").remove();
+
+            // make everything disappear by transparency
+            // FIX: also disable pointer-events on the hidden circles. opacity:0 alone does NOT
+            // stop SVG hit-testing, so as the cursor moves inside the responsibility area it would
+            // land on other invisible .circles and re-trigger handleMouseOver, stacking decorations.
+            svg.selectAll(".circles, .shades, .shades2")
+                .attr("opacity", "0")
+                .style("pointer-events", "none")
+            
+            // create support illustration by shading (only for one position)
+            // FIX: define our OWN radial gradient instead of using common.js's #radial-gradient.
+            // common.js's gradient appears to use userSpaceOnUse with fixed cx/cy/r, so when our
+            // rect is positioned elsewhere it just shows the outer stop solidly (or the URL fails
+            // to resolve and the rect falls back to its `fill` attribute, hence the solid red box).
+            // Our gradient uses objectBoundingBox so it's always centered on whatever rect uses it,
+            // and goes color -> transparent for a clean gaussian look.
+            var defs = svg.select("defs");
+            if (defs.empty()) defs = svg.insert("defs", ":first-child");
+            defs.select("#clean-gauss").remove();
+            var ourGrad = defs.append("radialGradient")
+                .attr("id", "clean-gauss")
+                .attr("cx", "50%").attr("cy", "50%").attr("r", "50%")
+                .attr("gradientUnits", "objectBoundingBox");
+            ourGrad.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", color)
+                .attr("stop-opacity", 0.55);
+            ourGrad.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", color)
+                .attr("stop-opacity", 0);
+
+            svg.append("rect")
+                .attr("class", "hover-decoration")
+                .attr("x", cx_raw - support_x / 2)
+                .attr("y", cy_raw - support_y / 2)
+                .attr("width", support_x)
+                .attr("height", support_y)
+                .style("fill", "url(#clean-gauss)")
+                .style("pointer-events", "none");   // <-- FIX: don't let this rect capture mouse events
+
+            // FIX: softer outer halo. The blur filter from common.js doesn't spread far enough to look
+            // like a real glow, so the rect was reading as a hard colored border. Drop the opacity
+            // and the result is just a faint tint at the support boundary rather than a colored "box".
+            svg.append("rect")
+                .attr("class", "hover-decoration")
+                .attr("x", cx_raw - support_x / 2)
+                .attr("y", cy_raw - support_y / 2)
+                .attr("fill", color)
+                .attr("width", support_x)
+                .attr("height", support_y)
+                .style("fill-opacity", 0.08)
+                .attr("filter", "url(#blur)").style('pointer-events', 'none');
+
+            
+            // show contributing input pixels
+            // (we no longer rely on common.js's update_filters to set the gradient — we own it now)
+            g_data = get_coords(in_sz_x, in_sz_y, null, null, 1, 1, vis_scale, shift_x, shift_y, 'naive');
+            // FIX: filter the DATA before binding/appending, so we don't create a circle for every
+            // input pixel and then just leave 40+ blank <circle> nodes lying around in the DOM.
+            var in_pixel_data = g_data.filter(function(dd) {
+                return (Math.abs(dd[0] - cx_raw) <= support_x / 2) && (Math.abs(dd[1] - cy_raw) <= support_y / 2);
+            });
+            svg.selectAll(".in_pixels")
+                                    .data(in_pixel_data)
+                                    .enter()
+                                        .append("circle")
+                                        .attr("class", "in_pixels")
+                                        .attr("r", 3)
+                                        .attr("fill", "yellow")
+                                        .attr("cx", function(dd) {return dd[0];})
+                                        .attr("cy", function(dd) {return dd[1];})
+                                        .style("stroke", "black")
+                                        .attr("stroke-width", 2)
+                                        .style("pointer-events", "none")
+                                        .raise()
+            
+            // make the chosen pixel larger
+            // FIX: re-enable pointer-events on the currently hovered circle. We just turned them off
+            // for all .circles a few lines up; without this, mouseout would never fire on this one.
+            d3.select(this).attr("r", "10").attr("opacity", "1").style("pointer-events", "all").raise()
+            
+            // update text boxes with pixel position
+            d3.select("#disp_px").text("Px = " + cx.toFixed(4))
+            d3.select("#disp_py").text("Py = " + cy.toFixed(4))
+            d3.select("#disp_dx").text("Dx = " + (cx + 0.5).toFixed(4))
+            d3.select("#disp_dy").text("Dy = " + (cy + 0.5).toFixed(4))
+        }
+
+        function handleMouseOut(d, i) {
+            // FIX: do targeted cleanup instead of calling the destructive update() which removes
+            // ALL rects (including the grid) and rebuilds. If the rebuild misbehaves for any reason,
+            // the grid is gone for good. Removing only the tagged decorations and restoring the
+            // circles' original state means the grid never gets disturbed in the first place.
+            svg.selectAll("rect.hover-decoration").remove();
+            svg.selectAll(".in_pixels").remove();
+
+            // restore all output circles to their normal opacity AND re-enable hit testing on them
+            // (we disabled pointer-events on them in handleMouseOver to stop re-fire stacking)
+            svg.selectAll(".circles, .shades, .shades2")
+                .attr("opacity", null)
+                .style("pointer-events", null);
+
+            // shrink the hovered circle back to its default radius
+            d3.select(this).attr("r", "5");
+
+            d3.select("#disp_px").text("Px = -------")
+            d3.select("#disp_py").text("Py = -------")
+            d3.select("#disp_dx").text("Dx = -------")
+            d3.select("#disp_dy").text("Dy = -------")
+        }
+
+
+                
+    </script>
+
+
+</d-title>
+
+</body>
