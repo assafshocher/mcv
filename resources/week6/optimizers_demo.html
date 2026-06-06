@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimizers on Loss Landscapes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#07080c;
+    --panel:rgba(16,18,26,0.82);
+    --panel-brd:rgba(120,140,180,0.16);
+    --ink:#e8ecf4;
+    --ink-dim:#8b93a7;
+    --ink-faint:#5a6175;
+    --accent:#f5b942;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --disp:'Bricolage Grotesque',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--mono);}
+  #scene{position:fixed;inset:0;display:block;cursor:grab;}
+  #scene:active{cursor:grabbing;}
+  body::after{ /* vignette */
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(ellipse at 50% 38%,transparent 40%,rgba(0,0,0,0.55) 100%);
+  }
+
+  /* ---- header ---- */
+  #head{position:fixed;top:0;left:0;right:0;z-index:5;pointer-events:none;
+    padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  #head h1{font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:-0.02em;line-height:1;
+    color:var(--ink);}
+  #head h1 b{color:var(--accent);font-weight:800;}
+  #head .sub{font-size:11px;color:var(--ink-dim);margin-top:6px;letter-spacing:0.02em;max-width:360px;line-height:1.5;}
+  #terrname{font-family:var(--disp);text-align:right;}
+  #terrname .t{font-size:15px;font-weight:600;color:var(--ink);}
+  #terrname .f{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:3px;}
+
+  /* ---- generic panel ---- */
+  .panel{background:var(--panel);border:1px solid var(--panel-brd);border-radius:14px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px -20px rgba(0,0,0,0.8);pointer-events:auto;}
+  .lbl{font-size:9.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px;display:block;}
+
+  /* ---- left control panel ---- */
+  #ctl{position:fixed;left:18px;top:96px;z-index:6;width:248px;padding:16px;max-height:calc(100vh - 130px);overflow-y:auto;}
+  #ctl::-webkit-scrollbar{width:6px;}
+  #ctl::-webkit-scrollbar-thumb{background:rgba(140,150,180,0.25);border-radius:3px;}
+  .grp{margin-bottom:18px;}
+  .terr-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .chip{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px 7px;cursor:pointer;text-align:center;
+    transition:all .15s;line-height:1.2;}
+  .chip:hover{border-color:rgba(245,185,66,0.4);color:var(--ink);}
+  .chip.on{background:rgba(245,185,66,0.13);border-color:var(--accent);color:var(--accent);font-weight:600;}
+
+  .opt-row{display:flex;align-items:center;gap:9px;padding:5px 6px;border-radius:7px;cursor:pointer;transition:background .12s;}
+  .opt-row:hover{background:rgba(255,255,255,0.04);}
+  .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;box-shadow:0 0 8px currentColor;}
+  .opt-row .nm{font-size:11.5px;color:var(--ink-dim);flex:1;}
+  .opt-row.on .nm{color:var(--ink);}
+  .opt-row .chk{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--ink-faint);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;transition:all .12s;}
+  .opt-row.on .chk{background:currentColor;border-color:currentColor;}
+  .opt-row.on .chk::after{content:"";width:5px;height:8px;border:solid #07080c;border-width:0 2px 2px 0;
+    transform:rotate(45deg) translateY(-1px);}
+  .tag{font-size:8px;letter-spacing:0.1em;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,0.06);
+    color:var(--ink-faint);text-transform:uppercase;}
+
+  .slider-wrap{margin-bottom:14px;}
+  .slider-wrap .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .slider-wrap .top span:first-child{font-size:11px;color:var(--ink-dim);}
+  .slider-wrap .val{font-size:11px;color:var(--accent);font-weight:600;}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:3px;
+    background:rgba(255,255,255,0.12);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--accent);cursor:pointer;box-shadow:0 0 10px rgba(245,185,66,0.6);border:2px solid #1a1d28;}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);
+    cursor:pointer;border:2px solid #1a1d28;}
+
+  .btns{display:flex;gap:7px;}
+  .btn{flex:1;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.03em;color:var(--ink);
+    background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 6px;
+    cursor:pointer;transition:all .14s;text-transform:uppercase;}
+  .btn:hover{background:rgba(255,255,255,0.1);}
+  .btn.primary{background:var(--accent);color:#0a0b10;border-color:var(--accent);}
+  .btn.primary:hover{filter:brightness(1.08);}
+
+  /* ---- right leaderboard ---- */
+  #board{position:fixed;right:18px;top:96px;z-index:6;width:236px;padding:15px 15px 11px;}
+  #leads{display:flex;flex-direction:column;}
+  .lead{order:0;display:flex;align-items:center;gap:9px;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.04);
+    border-radius:7px;transition:background .14s,box-shadow .14s;cursor:default;}
+  .lead .sw{width:9px;height:9px;}
+  .lead .nm{font-size:11px;color:var(--ink);flex:1;font-weight:500;}
+  .lead .loss{font-size:10.5px;color:var(--ink-dim);font-variant-numeric:tabular-nums;text-align:right;min-width:62px;}
+  .lead .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}
+  .lead.hl,.opt-row.hl{background:rgba(255,255,255,0.09);box-shadow:inset 2px 0 0 currentColor;}
+  .dot.run{background:#4ade80;box-shadow:0 0 6px #4ade80;animation:pulse 1.1s infinite;}
+  .dot.conv{background:#38bdf8;}
+  .dot.div{background:#ef4444;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+  #board .foot{font-size:9px;color:var(--ink-faint);margin-top:9px;letter-spacing:0.04em;line-height:1.5;}
+
+  /* ---- loss vs step plot (bottom-right) ---- */
+  #plot{position:fixed;right:18px;bottom:20px;z-index:6;width:300px;padding:12px 14px 10px;}
+  #plotc{display:block;width:100%;height:172px;cursor:crosshair;}
+
+  /* ---- colorbar ---- */
+  #cbar{position:fixed;left:22px;bottom:20px;z-index:6;display:flex;align-items:center;gap:9px;pointer-events:none;}
+  #cbar .bar{width:11px;height:120px;border-radius:4px;
+    background:linear-gradient(to top,#02020a,#280b54,#651570,#9f2a63,#d44842,#f57d15,#fcffa4);}
+  #cbar .labs{display:flex;flex-direction:column;justify-content:space-between;height:120px;font-size:9px;color:var(--ink-faint);}
+
+  /* ---- hint ---- */
+  #hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:6;font-size:10px;
+    color:var(--ink-faint);letter-spacing:0.05em;background:rgba(10,12,18,0.6);padding:6px 14px;border-radius:20px;
+    border:1px solid rgba(255,255,255,0.06);backdrop-filter:blur(6px);}
+  #hint b{color:var(--ink-dim);}
+
+  @media (max-width:880px){
+    #ctl{top:auto;bottom:60px;left:10px;right:10px;width:auto;max-height:42vh;}
+    #board{top:auto;bottom:auto;right:10px;top:96px;width:180px;}
+    #cbar{display:none;}#hint{display:none;}#plot{display:none;}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="head">
+  <div>
+    <h1>Optimizers · <b>Loss Landscapes</b></h1>
+    <div class="sub">Watch optimizers descend a 2-D parameter space; the height is the loss. Gradients are computed numerically, so the dynamics are real, not scripted.</div>
+  </div>
+  <div id="terrname"><div class="t">—</div><div class="f">—</div></div>
+</div>
+
+<div id="ctl" class="panel">
+  <div class="grp">
+    <span class="lbl">Terrain</span>
+    <div class="terr-grid" id="terrains"></div>
+  </div>
+  <div class="grp">
+    <span class="lbl">Optimizers</span>
+    <div id="optlist"></div>
+  </div>
+  <div class="grp">
+    <span class="lbl">Hyperparameters</span>
+    <div class="slider-wrap">
+      <div class="top"><span>learning rate</span><span class="val" id="lrval">1.0×</span></div>
+      <input type="range" id="lr" min="-2" max="2" step="0.05" value="0">
+    </div>
+    <div class="slider-wrap">
+      <div class="top"><span>momentum β</span><span class="val" id="momval">0.90</span></div>
+      <input type="range" id="mom" min="0" max="0.99" step="0.01" value="0.9">
+    </div>
+    <div class="slider-wrap">
+      <div class="top"><span>speed</span><span class="val" id="spdval">2×</span></div>
+      <input type="range" id="spd" min="1" max="8" step="1" value="2">
+    </div>
+  </div>
+  <div class="grp">
+    <span class="lbl" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Terrain noise</span>
+      <span class="chip" id="noisetog" style="padding:3px 9px;letter-spacing:0;">off</span>
+    </span>
+    <div id="noisebody" style="opacity:0.4;pointer-events:none;transition:opacity .15s;">
+      <div class="slider-wrap">
+        <div class="top"><span>magnitude</span><span class="val" id="nmagval">0.35</span></div>
+        <input type="range" id="nmag" min="0" max="1" step="0.01" value="0.35">
+      </div>
+      <div class="slider-wrap">
+        <div class="top"><span>frequency band</span><span class="val" id="nfreqval">1.3</span></div>
+        <input type="range" id="nfreq" min="0.4" max="6" step="0.1" value="1.3">
+      </div>
+      <div class="btns"><button class="btn" id="nregen">Regenerate field</button></div>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="lbl">Run</span>
+    <div class="btns" style="margin-bottom:7px;">
+      <button class="btn primary" id="play">Pause</button>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+    <div class="btns">
+      <button class="btn" id="rand">Random start</button>
+    </div>
+  </div>
+</div>
+
+<div id="board" class="panel">
+  <span class="lbl">Live · loss & status</span>
+  <div id="leads"></div>
+  <div class="foot" id="stepfoot">step 0</div>
+</div>
+
+<div id="plot" class="panel">
+  <span class="lbl" style="margin-bottom:4px;">Loss vs step · time–loss trade-off</span>
+  <canvas id="plotc"></canvas>
+</div>
+
+<div id="cbar">
+  <div class="bar"></div>
+  <div class="labs"><span>high</span><span>loss</span><span>low</span></div>
+</div>
+
+<div id="hint">drag to orbit · scroll to zoom · <b>click the surface to drop a new start point</b></div>
+
+<script>
+"use strict";
+/* ============================================================
+   OPTIMIZERS ON LOSS LANDSCAPES
+   ============================================================ */
+
+/* ---------- Terrains: f(x,y) -> scalar loss ---------- */
+const TERRAINS = {
+  ravine: {
+    name: "Ravine", formula: "½(x² + 20y²)",
+    f:(x,y)=>0.5*(x*x + 20*y*y),
+    xmin:-2,xmax:2,ymin:-2,ymax:2, lrProp:0.045, lrNorm:0.03, start:[1.7,1.6]
+  },
+  doublewell: {
+    name: "Double Well", formula: "(x²−1)² + y²",
+    f:(x,y)=>{const a=x*x-1;return a*a + y*y;},
+    xmin:-2,xmax:2,ymin:-1.6,ymax:1.6, lrProp:0.018, lrNorm:0.025, start:[0.04,1.3]
+  },
+  rosenbrock: {
+    name: "Rosenbrock", formula: "(1−x)² + 100(y−x²)²",
+    f:(x,y)=>{const a=1-x,b=y-x*x;return a*a + 100*b*b;},
+    xmin:-2,xmax:2,ymin:-1,ymax:3, lrProp:0.0009, lrNorm:0.012, start:[-1.4,2.4]
+  },
+  rastrigin: {
+    name: "Rastrigin", formula: "20 + Σ xᵢ² − 10cos(2πxᵢ)",
+    f:(x,y)=>20 + (x*x-10*Math.cos(2*Math.PI*x)) + (y*y-10*Math.cos(2*Math.PI*y)),
+    xmin:-5,xmax:5,ymin:-5,ymax:5, lrProp:0.011, lrNorm:0.04, start:[3.7,4.2]
+  },
+  himmelblau: {
+    name: "Himmelblau", formula: "(x²+y−11)² + (x+y²−7)²",
+    f:(x,y)=>{const a=x*x+y-11,b=x+y*y-7;return a*a+b*b;},
+    xmin:-5,xmax:5,ymin:-5,ymax:5, lrProp:0.006, lrNorm:0.05, start:[0.0,0.0]
+  },
+  beale: {
+    name: "Beale", formula: "Σ (cᵢ − x + xyⁱ)²",
+    f:(x,y)=>{const a=1.5-x+x*y,b=2.25-x+x*y*y,c=2.625-x+x*y*y*y;return a*a+b*b+c*c;},
+    xmin:-4.5,xmax:4.5,ymin:-4.5,ymax:4.5, lrProp:0.0006, lrNorm:0.022, start:[-3.5,-3.5]
+  },
+  basin: {
+    name: "Basin", formula: "0.28(x² + y²)",
+    f:(x,y)=>0.28*(x*x+y*y),
+    xmin:-3,xmax:3,ymin:-3,ymax:3, lrProp:0.06, lrNorm:0.04, start:[2.5,2.3]
+  },
+  wells: {
+    name: "Wells", formula: "0.04r² − Σ aᵢ·exp(−‖·−cᵢ‖²/sᵢ)",
+    f:(x,y)=>1.25 + 0.04*(x*x+y*y)
+      -1.00*Math.exp(-((x-1.2)*(x-1.2)+(y-1.0)*(y-1.0))/0.8)
+      -0.85*Math.exp(-((x+1.5)*(x+1.5)+(y+1.2)*(y+1.2))/1.0)
+      -0.70*Math.exp(-((x-1.1)*(x-1.1)+(y+1.4)*(y+1.4))/0.6)
+      -0.65*Math.exp(-((x+1.3)*(x+1.3)+(y-1.5)*(y-1.5))/0.7),
+    xmin:-3,xmax:3,ymin:-3,ymax:3, lrProp:0.05, lrNorm:0.045, start:[-2.3,2.3]
+  },
+};
+
+/* numeric gradient via central differences -> works for any terrain */
+function grad(f,x,y){
+  const h=1e-3;
+  return [ (f(x+h,y)-f(x-h,y))/(2*h), (f(x,y+h)-f(x,y-h))/(2*h) ];
+}
+const norm2=(a,b)=>Math.hypot(a,b);
+
+/* ---------- band-limited random-Fourier noise ----------
+   A seeded sum of K plane-wave sinusoids with frequencies drawn from a band
+   centred on `freq` (cycles across the domain). Smooth & infinitely
+   differentiable, so finite-difference gradients stay well behaved; the same
+   field is used by the surface mesh, the optimiser gradients, and the trails.
+   amp is set per-terrain from a robust low-region scale so it "just works". */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const NOISE_K=10;
+const noise={on:false, mag:0.35, freq:1.3, bw:0.55, seed:1337, amp:0, comps:[], norm:1};
+function rebuildNoiseComps(){
+  const rnd=mulberry32(noise.seed>>>0);
+  noise.comps=[];
+  for(let k=0;k<NOISE_K;k++){
+    const nu=noise.freq*(1+noise.bw*(rnd()*2-1));    // freq magnitude (cycles/domain)
+    const th=rnd()*Math.PI*2;
+    noise.comps.push({nu,dx:Math.cos(th),dy:Math.sin(th),ph:rnd()*Math.PI*2});
+  }
+  noise.norm=Math.sqrt(NOISE_K/2);                    // ~unit RMS normalisation
+}
+function smoothNoise(x,y){
+  // domain-normalised coords so the freq dial means the same on every terrain
+  const u=(x-T.xmin)/(T.xmax-T.xmin), v=(y-T.ymin)/(T.ymax-T.ymin);
+  let s=0;
+  for(let k=0;k<noise.comps.length;k++){const c=noise.comps[k];
+    s+=Math.sin(2*Math.PI*c.nu*(c.dx*u+c.dy*v)+c.ph);}
+  return s/noise.norm;
+}
+/* the function everything actually optimises / renders */
+function lossFn(x,y){ return T.f(x,y) + (noise.on ? noise.amp*smoothNoise(x,y) : 0); }
+
+/* ---------- Optimizers ----------
+   Each builds a stepper holding its own state. step() returns next [x,y].
+   group: 'prop' (step ∝ gradient -> uses terrain.lrProp)
+          'norm' (step ~ scale-invariant -> uses terrain.lrNorm)
+   H = shared hyper object {mom, lrMul}
+*/
+const EPS=1e-8;
+const OPTS = {
+  sgd:{name:"SGD",color:"#38bdf8",group:"prop",tag:"GD",rule:"θ ← θ − η·g",def:true,
+    make(p,f){let x=p[0],y=p[1];return{pos:[x,y],step(lr,H){const[gx,gy]=grad(f,x,y);x-=lr*gx;y-=lr*gy;this.pos=[x,y];return[x,y];}};}},
+
+  momentum:{name:"Momentum",color:"#f472b6",group:"prop",tag:"heavy-ball",rule:"v ← βv − η·g ; θ ← θ + v",def:true,
+    make(p,f){let x=p[0],y=p[1],vx=0,vy=0;return{pos:[x,y],step(lr,H){const[gx,gy]=grad(f,x,y);vx=H.mom*vx-lr*gx;vy=H.mom*vy-lr*gy;x+=vx;y+=vy;this.pos=[x,y];return[x,y];}};}},
+
+  nesterov:{name:"Nesterov",color:"#a78bfa",group:"prop",tag:"NAG",rule:"lookahead grad: g(θ+βv)",def:true,
+    make(p,f){let x=p[0],y=p[1],vx=0,vy=0;return{pos:[x,y],step(lr,H){const lx=x+H.mom*vx,ly=y+H.mom*vy;const[gx,gy]=grad(f,lx,ly);vx=H.mom*vx-lr*gx;vy=H.mom*vy-lr*gy;x+=vx;y+=vy;this.pos=[x,y];return[x,y];}};}},
+
+  adagrad:{name:"Adagrad",color:"#2dd4bf",group:"norm",tag:"adaptive",rule:"G += g² ; θ ← θ − η·g/√G",def:false,
+    make(p,f){let x=p[0],y=p[1],Gx=0,Gy=0;return{pos:[x,y],step(lr,H){const[gx,gy]=grad(f,x,y);Gx+=gx*gx;Gy+=gy*gy;x-=lr*gx/(Math.sqrt(Gx)+EPS);y-=lr*gy/(Math.sqrt(Gy)+EPS);this.pos=[x,y];return[x,y];}};}},
+
+  rmsprop:{name:"RMSprop",color:"#a3e635",group:"norm",tag:"adaptive",rule:"s ← βs+(1−β)g² ; θ ← θ − η·g/√s",def:false,
+    make(p,f){let x=p[0],y=p[1],sx=0,sy=0;const b=0.9;return{pos:[x,y],step(lr,H){const[gx,gy]=grad(f,x,y);sx=b*sx+(1-b)*gx*gx;sy=b*sy+(1-b)*gy*gy;x-=lr*gx/(Math.sqrt(sx)+EPS);y-=lr*gy/(Math.sqrt(sy)+EPS);this.pos=[x,y];return[x,y];}};}},
+
+  adam:{name:"Adam",color:"#fb923c",group:"norm",tag:"adaptive",rule:"bias-corrected m̂/√v̂",def:true,
+    make(p,f){let x=p[0],y=p[1],mx=0,my=0,vx=0,vy=0,t=0;const b1=0.9,b2=0.999;return{pos:[x,y],step(lr,H){t++;const[gx,gy]=grad(f,x,y);mx=b1*mx+(1-b1)*gx;my=b1*my+(1-b1)*gy;vx=b2*vx+(1-b2)*gx*gx;vy=b2*vy+(1-b2)*gy*gy;const mhx=mx/(1-Math.pow(b1,t)),mhy=my/(1-Math.pow(b1,t));const vhx=vx/(1-Math.pow(b2,t)),vhy=vy/(1-Math.pow(b2,t));x-=lr*mhx/(Math.sqrt(vhx)+EPS);y-=lr*mhy/(Math.sqrt(vhy)+EPS);this.pos=[x,y];return[x,y];}};}},
+
+  adamw:{name:"AdamW",color:"#fbbf24",group:"norm",tag:"decoupled wd",rule:"Adam + decoupled λθ",def:true,
+    make(p,f){let x=p[0],y=p[1],mx=0,my=0,vx=0,vy=0,t=0;const b1=0.9,b2=0.999,wd=0.04;return{pos:[x,y],step(lr,H){t++;const[gx,gy]=grad(f,x,y);mx=b1*mx+(1-b1)*gx;my=b1*my+(1-b1)*gy;vx=b2*vx+(1-b2)*gx*gx;vy=b2*vy+(1-b2)*gy*gy;const mhx=mx/(1-Math.pow(b1,t)),mhy=my/(1-Math.pow(b1,t));const vhx=vx/(1-Math.pow(b2,t)),vhy=vy/(1-Math.pow(b2,t));x-=lr*mhx/(Math.sqrt(vhx)+EPS)+lr*wd*x;y-=lr*mhy/(Math.sqrt(vhy)+EPS)+lr*wd*y;this.pos=[x,y];return[x,y];}};}},
+
+  nadam:{name:"Nadam",color:"#f87171",group:"norm",tag:"Nesterov-Adam",rule:"Adam with Nesterov momentum",def:false,
+    make(p,f){let x=p[0],y=p[1],mx=0,my=0,vx=0,vy=0,t=0;const b1=0.9,b2=0.999;return{pos:[x,y],step(lr,H){t++;const[gx,gy]=grad(f,x,y);mx=b1*mx+(1-b1)*gx;my=b1*my+(1-b1)*gy;vx=b2*vx+(1-b2)*gx*gx;vy=b2*vy+(1-b2)*gy*gy;const bc1=1-Math.pow(b1,t),bc2=1-Math.pow(b2,t);const mhx=mx/bc1,mhy=my/bc1,vhx=vx/bc2,vhy=vy/bc2;const nx=b1*mhx+(1-b1)*gx/bc1,ny=b1*mhy+(1-b1)*gy/bc1;x-=lr*nx/(Math.sqrt(vhx)+EPS);y-=lr*ny/(Math.sqrt(vhy)+EPS);this.pos=[x,y];return[x,y];}};}},
+
+  lion:{name:"Lion",color:"#818cf8",group:"norm",tag:"sign",rule:"θ ← θ − η·sign(βm+(1−β)g)",def:false,
+    make(p,f){let x=p[0],y=p[1],mx=0,my=0;const b1=0.9,b2=0.99;return{pos:[x,y],step(lr,H){const[gx,gy]=grad(f,x,y);const cx=b1*mx+(1-b1)*gx,cy=b1*my+(1-b1)*gy;x-=lr*Math.sign(cx);y-=lr*Math.sign(cy);mx=b2*mx+(1-b2)*gx;my=b2*my+(1-b2)*gy;this.pos=[x,y];return[x,y];}};}},
+
+  muon:{name:"Muon",color:"#f5f5f5",group:"norm",tag:"orthogonalized*",rule:"normalize(βm+g) — vector analog of NS-orthogonalized momentum",def:true,
+    make(p,f){let x=p[0],y=p[1],mx=0,my=0;return{pos:[x,y],step(lr,H){const[gx,gy]=grad(f,x,y);mx=H.mom*mx+gx;my=H.mom*my+gy;const n=norm2(mx,my)+EPS;x-=lr*mx/n;y-=lr*my/n;this.pos=[x,y];return[x,y];}};}},
+};
+const OPT_KEYS=Object.keys(OPTS);
+
+/* ============================================================
+   THREE.JS SCENE
+   ============================================================ */
+const SCALE=2.6, HMAX=1.7, GRIDRES=140, COMP=0.36;
+const canvas=document.getElementById("scene");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x07080c);
+scene.fog=new THREE.FogExp2(0x07080c,0.045);
+const camera=new THREE.PerspectiveCamera(46,1,0.1,100);
+const target=new THREE.Vector3(0,0.35,0);
+
+/* lights */
+scene.add(new THREE.AmbientLight(0xb8c4e0,0.55));
+const dir=new THREE.DirectionalLight(0xfff3e0,1.15); dir.position.set(4,8,3); scene.add(dir);
+const dir2=new THREE.DirectionalLight(0x6ea8ff,0.4); dir2.position.set(-5,4,-4); scene.add(dir2);
+
+/* orbit camera (custom) */
+let camR=6.6, camTheta=0.85, camPhi=0.95;
+function updateCam(){
+  camPhi=Math.max(0.18,Math.min(1.45,camPhi));
+  camR=Math.max(3.5,Math.min(14,camR));
+  camera.position.set(
+    target.x+camR*Math.sin(camPhi)*Math.cos(camTheta),
+    target.y+camR*Math.cos(camPhi),
+    target.z+camR*Math.sin(camPhi)*Math.sin(camTheta));
+  camera.lookAt(target);
+}
+
+/* colormap (inferno approx) */
+const CMAP=[[2,2,10],[28,12,60],[60,16,90],[101,21,110],[150,34,99],[197,57,72],[240,110,30],[248,170,40],[252,255,164]];
+function cmap(t){t=Math.max(0,Math.min(1,t));const s=t*(CMAP.length-1);const i=Math.floor(s);const fr=s-i;
+  const a=CMAP[i],b=CMAP[Math.min(i+1,CMAP.length-1)];
+  return [(a[0]+(b[0]-a[0])*fr)/255,(a[1]+(b[1]-a[1])*fr)/255,(a[2]+(b[2]-a[2])*fr)/255];}
+
+/* surface group */
+let surfMesh=null, wireMesh=null;
+let T=null;                 // current terrain
+let fmin=0,fspan=1;          // for height normalization
+const toSceneX=x=>(x-(T.xmin+T.xmax)/2)/((T.xmax-T.xmin)/2)*SCALE;
+const toSceneZ=y=>(y-(T.ymin+T.ymax)/2)/((T.ymax-T.ymin)/2)*SCALE;
+const fromSceneX=sx=>sx/SCALE*((T.xmax-T.xmin)/2)+(T.xmin+T.xmax)/2;
+const fromSceneZ=sz=>sz/SCALE*((T.ymax-T.ymin)/2)+(T.ymin+T.ymax)/2;
+function heightOf(x,y){const v=lossFn(x,y);let n=(v-fmin)/fspan;n=Math.max(0,Math.min(1,n));return Math.pow(n,COMP)*HMAX;}
+
+function buildSurface(key){
+  T=TERRAINS[key];
+  rebuildNoiseComps();
+  const SN=90;
+  // --- pass 1: robust low-region scale of the BASE terrain -> noise amplitude
+  const base=[];let bmin=Infinity,bmax=-Infinity;
+  for(let i=0;i<=SN;i++)for(let j=0;j<=SN;j++){
+    const x=T.xmin+(T.xmax-T.xmin)*i/SN, y=T.ymin+(T.ymax-T.ymin)*j/SN;
+    const v=T.f(x,y); base.push(v); if(v<bmin)bmin=v; if(v>bmax)bmax=v;
+  }
+  base.sort((a,b)=>a-b);
+  const p10=base[Math.floor(base.length*0.10)];
+  let lowSpread=Math.max(p10-bmin,(bmax-bmin)*0.01);     // basin-scale, not wall-scale
+  noise.amp=Math.min(noise.mag*2.0*lowSpread,(bmax-bmin)*0.3);
+
+  // --- pass 2: normalise over the actual (possibly noisy) field
+  let mn=Infinity,mx=-Infinity;
+  for(let i=0;i<=SN;i++)for(let j=0;j<=SN;j++){
+    const x=T.xmin+(T.xmax-T.xmin)*i/SN, y=T.ymin+(T.ymax-T.ymin)*j/SN;
+    const v=lossFn(x,y); if(v<mn)mn=v; if(v>mx)mx=v;
+  }
+  fmin=mn; fspan=(mx-mn)||1;
+
+  if(surfMesh){scene.remove(surfMesh);surfMesh.geometry.dispose();surfMesh.material.dispose();}
+  if(wireMesh){scene.remove(wireMesh);wireMesh.geometry.dispose();wireMesh.material.dispose();}
+
+  const N=GRIDRES, verts=[],cols=[],idx=[];
+  for(let i=0;i<=N;i++)for(let j=0;j<=N;j++){
+    const x=T.xmin+(T.xmax-T.xmin)*i/N, y=T.ymin+(T.ymax-T.ymin)*j/N;
+    let n=Math.max(0,Math.min(1,(lossFn(x,y)-fmin)/fspan));
+    verts.push(toSceneX(x),Math.pow(n,COMP)*HMAX,toSceneZ(y));
+    const c=cmap(Math.pow(n,COMP)); cols.push(c[0],c[1],c[2]);
+  }
+  const row=N+1;
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    const a=i*row+j,b=a+1,c2=a+row,d=c2+1;
+    idx.push(a,c2,b, b,c2,d);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
+  g.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
+  g.setIndex(idx); g.computeVertexNormals();
+  const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.78,metalness:0.05,
+    flatShading:false,side:THREE.DoubleSide});
+  surfMesh=new THREE.Mesh(g,m); scene.add(surfMesh);
+
+  // coarse wireframe overlay
+  const NW=46, wv=[];
+  function H(x,y){return heightOf(x,y)+0.004;}
+  for(let i=0;i<=NW;i++){for(let j=0;j<NW;j++){
+    const x=T.xmin+(T.xmax-T.xmin)*i/NW;
+    const y0=T.ymin+(T.ymax-T.ymin)*j/NW, y1=T.ymin+(T.ymax-T.ymin)*(j+1)/NW;
+    wv.push(toSceneX(x),H(x,y0),toSceneZ(y0), toSceneX(x),H(x,y1),toSceneZ(y1));
+  }}
+  for(let j=0;j<=NW;j++){for(let i=0;i<NW;i++){
+    const y=T.ymin+(T.ymax-T.ymin)*j/NW;
+    const x0=T.xmin+(T.xmax-T.xmin)*i/NW, x1=T.xmin+(T.xmax-T.xmin)*(i+1)/NW;
+    wv.push(toSceneX(x0),H(x0,y),toSceneZ(y), toSceneX(x1),H(x1,y),toSceneZ(y));
+  }}
+  const wg=new THREE.BufferGeometry();
+  wg.setAttribute("position",new THREE.Float32BufferAttribute(wv,3));
+  wireMesh=new THREE.LineSegments(wg,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.06}));
+  scene.add(wireMesh);
+
+  document.querySelector("#terrname .t").textContent=T.name;
+  document.querySelector("#terrname .f").textContent="f(x,y) = "+T.formula+(noise.on?"  +  noise":"");
+}
+
+/* ---------- glowing trail sprite ---------- */
+function glowTex(){
+  const c=document.createElement("canvas");c.width=c.height=64;const g=c.getContext("2d");
+  const grd=g.createRadialGradient(32,32,0,32,32,32);
+  grd.addColorStop(0,"rgba(255,255,255,1)");grd.addColorStop(0.25,"rgba(255,255,255,0.85)");
+  grd.addColorStop(0.6,"rgba(255,255,255,0.18)");grd.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle=grd;g.fillRect(0,0,64,64);
+  const t=new THREE.Texture(c);t.needsUpdate=true;return t;
+}
+const GLOW=glowTex();
+const MAXPTS=6100;   // matches the 6000-step hard cap so trails never get cut short
+
+/* ============================================================
+   RUNNERS
+   ============================================================ */
+let runners=[];   // {key,opt,stepper,positions,line,points,head,halo,steps,status,loss,col}
+let startPt=null; // [x,y]
+let curKey="ravine";
+let playing=true, stepCount=0;
+let hoverKey=null;
+const H={mom:0.9, lrMul:1};
+
+/* ---- hover linking: name <-> ball/trail (both directions) ---- */
+function applyHighlight(key){
+  runners.forEach(r=>{
+    const dim = key!==null && r.key!==key;
+    const emph = key!==null && r.key===key;
+    r.line.material.opacity   = dim?0.06:0.55;
+    r.points.material.opacity = dim?0.10:0.85;
+    r.head.material.opacity   = dim?0.16:1;
+    r.halo.material.opacity   = dim?0.18:0.9;
+    r.head.scale.setScalar(emph?1.9:1);
+    r._emph=emph;
+  });
+}
+function setHover(key){
+  hoverKey=key;
+  const has = key!==null && runners.some(r=>r.key===key);
+  applyHighlight(has?key:null);
+  document.querySelectorAll(".lead,.opt-row").forEach(el=>{
+    el.classList.toggle("hl", key!==null && el.dataset.k===key);
+  });
+}
+
+function clearRunners(){
+  runners.forEach(r=>{
+    scene.remove(r.line);scene.remove(r.points);scene.remove(r.head);scene.remove(r.halo);
+    r.line.geometry.dispose();r.points.geometry.dispose();r.head.geometry.dispose();
+  });
+  runners=[];
+}
+
+function activeKeys(){return OPT_KEYS.filter(k=>document.querySelector('.opt-row[data-k="'+k+'"]').classList.contains("on"));}
+
+function buildRunners(){
+  clearRunners();
+  stepCount=0;
+  const keys=activeKeys();
+  keys.forEach(k=>{
+    const opt=OPTS[k];
+    const col=new THREE.Color(opt.color);
+    const stepper=opt.make(startPt.slice(),lossFn);
+    const pos=new Float32Array(MAXPTS*3);
+    const x0=startPt[0],y0=startPt[1],h0=heightOf(x0,y0)+0.02;
+    pos[0]=toSceneX(x0);pos[1]=h0;pos[2]=toSceneZ(y0);
+    // line
+    const lg=new THREE.BufferGeometry();
+    lg.setAttribute("position",new THREE.BufferAttribute(pos,3));
+    lg.setDrawRange(0,1);
+    const line=new THREE.Line(lg,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.55,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+    scene.add(line);
+    // points (share buffer)
+    const pg=new THREE.BufferGeometry();
+    pg.setAttribute("position",new THREE.BufferAttribute(pos,3));
+    pg.setDrawRange(0,1);
+    const points=new THREE.Points(pg,new THREE.PointsMaterial({color:col,size:0.085,map:GLOW,
+      transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+    scene.add(points);
+    // head
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.05,16,16),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:1}));
+    head.position.set(pos[0],pos[1],pos[2]); scene.add(head);
+    const halo=new THREE.Sprite(new THREE.SpriteMaterial({color:col,map:GLOW,transparent:true,
+      opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+    halo.scale.set(0.32,0.32,0.32); halo.position.copy(head.position); scene.add(halo);
+
+    const l0=lossFn(x0,y0);
+    runners.push({key:k,opt,stepper,positions:pos,lg,pg,line,points,head,halo,
+      n:1,steps:0,status:"run",loss:l0,prevLoss:l0,still:0,best:l0,col:opt.color,
+      hist:[l0]});
+  });
+  buildBoard();
+  setHover(null);
+}
+
+/* build leaderboard rows ONCE per run -> stable nodes so hover survives */
+function buildBoard(){
+  const el=document.getElementById("leads");
+  el.innerHTML="";
+  runners.forEach(r=>{
+    const row=document.createElement("div");
+    row.className="lead";row.dataset.k=r.key;row.style.color=r.col;
+    row.innerHTML=`<span class="sw" style="background:${r.col};color:${r.col}"></span>
+      <span class="nm">${r.opt.name}</span>
+      <span class="loss"></span>
+      <span class="dot"></span>`;
+    row.addEventListener("mouseenter",()=>setHover(r.key));
+    row.addEventListener("mouseleave",()=>setHover(null));
+    r._row=row; r._lossEl=row.querySelector(".loss"); r._dotEl=row.querySelector(".dot");
+    el.appendChild(row);
+  });
+  updateBoard();
+}
+
+function updateBoard(){
+  const sorted=[...runners].sort((a,b)=>a.loss-b.loss);
+  sorted.forEach((r,i)=>{
+    if(!r._row)return;
+    r._row.style.order=i;                                  // reorder via flex, nodes stay put
+    const dot=r.status==="run"?"run":(r.status==="div"?"div":"conv");
+    const lv=isFinite(r.loss)?(r.loss<0.001?r.loss.toExponential(1):r.loss.toFixed(3)):"diverged";
+    if(r._lossEl.textContent!==lv)r._lossEl.textContent=lv;
+    r._dotEl.className="dot "+dot;
+  });
+  const running=runners.filter(r=>r.status==="run").length;
+  const foot=document.getElementById("stepfoot");
+  if(runners.length && running===0){
+    foot.textContent="\u2713 all settled \u00b7 Reset or Random start to run again";
+  } else {
+    foot.textContent="step "+stepCount+" \u00b7 "+running+" running";
+  }
+}
+
+function stepRunner(r){
+  if(r.status!=="run")return;
+  const lr=r.opt.group==="prop"? T.lrProp*H.lrMul : T.lrNorm*H.lrMul;
+  let p;
+  try{ p=r.stepper.step(lr,H); }catch(e){ r.status="div"; return; }
+  const[x,y]=p;
+  // divergence / out of bounds
+  const outX=(T.xmax-T.xmin), outY=(T.ymax-T.ymin);
+  if(!isFinite(x)||!isFinite(y)||x<T.xmin-outX*0.4||x>T.xmax+outX*0.4||y<T.ymin-outY*0.4||y>T.ymax+outY*0.4){
+    r.status="div"; r.loss=lossFn(x,y); return;
+  }
+  const h=heightOf(x,y)+0.02;
+  if(r.n<MAXPTS){
+    const i=r.n*3;
+    r.positions[i]=toSceneX(x);r.positions[i+1]=h;r.positions[i+2]=toSceneZ(y);
+    r.n++;
+    r.lg.setDrawRange(0,r.n);r.pg.setDrawRange(0,r.n);
+    r.lg.attributes.position.needsUpdate=true;r.pg.attributes.position.needsUpdate=true;
+  }
+  r.head.position.set(toSceneX(x),h,toSceneZ(y));
+  r.halo.position.copy(r.head.position);
+  r.steps++;
+  r.loss=lossFn(x,y);
+  r.hist.push(r.loss);
+  if(r.loss<r.best)r.best=r.loss;
+  // convergence = loss stopped improving (robust on flat/valley regions),
+  // not "gradient is small" (which fires early on plateaus & valley floors).
+  const rel=(r.prevLoss-r.loss)/(Math.abs(r.prevLoss)+1e-12);
+  if(rel<1e-7){ r.still++; } else { r.still=0; }
+  r.prevLoss=r.loss;
+  if(r.still>30 && r.steps>8){ r.status="conv"; }   // genuinely settled
+  if(r.steps>6000){ r.status="conv"; }              // hard cap (e.g. dithering sign/normalized methods)
+}
+
+/* ============================================================
+   UI WIRING
+   ============================================================ */
+// terrains
+const tEl=document.getElementById("terrains");
+Object.keys(TERRAINS).forEach((k,ix)=>{
+  const d=document.createElement("div");d.className="chip"+(ix===0?" on":"");d.dataset.k=k;
+  d.textContent=TERRAINS[k].name;
+  d.onclick=()=>{tEl.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));d.classList.add("on");
+    loadTerrain(k);};
+  tEl.appendChild(d);
+});
+// optimizers
+const oEl=document.getElementById("optlist");
+OPT_KEYS.forEach(k=>{
+  const o=OPTS[k];
+  const r=document.createElement("div");
+  r.className="opt-row"+(o.def?" on":"");r.dataset.k=k;r.style.color=o.color;
+  r.title=o.name+"  —  "+o.rule;
+  r.innerHTML=`<span class="sw" style="background:${o.color}"></span>
+    <span class="nm">${o.name}</span><span class="tag">${o.tag}</span>
+    <span class="chk"></span>`;
+  r.onclick=()=>{r.classList.toggle("on");buildRunners();};
+  r.addEventListener("mouseenter",()=>setHover(k));
+  r.addEventListener("mouseleave",()=>setHover(null));
+  oEl.appendChild(r);
+});
+
+// sliders
+const lrEl=document.getElementById("lr"),momEl=document.getElementById("mom"),spdEl=document.getElementById("spd");
+let speed=2;
+function syncSliders(){
+  H.lrMul=Math.pow(10,parseFloat(lrEl.value));
+  document.getElementById("lrval").textContent=H.lrMul.toFixed(H.lrMul<1?2:1)+"×";
+  H.mom=parseFloat(momEl.value);
+  document.getElementById("momval").textContent=H.mom.toFixed(2);
+  speed=parseInt(spdEl.value);
+  document.getElementById("spdval").textContent=speed+"×";
+}
+lrEl.oninput=syncSliders; momEl.oninput=()=>{syncSliders();buildRunners();}; spdEl.oninput=syncSliders;
+syncSliders();
+
+// noise controls
+const noiseTog=document.getElementById("noisetog"),noiseBody=document.getElementById("noisebody");
+const nmagEl=document.getElementById("nmag"),nfreqEl=document.getElementById("nfreq");
+function applyNoiseUI(){
+  noiseTog.textContent=noise.on?"on":"off";
+  noiseTog.classList.toggle("on",noise.on);
+  noiseBody.style.opacity=noise.on?"1":"0.4";
+  noiseBody.style.pointerEvents=noise.on?"auto":"none";
+}
+// regenerate the surface+race when the landscape itself changes (debounced to one rebuild/frame)
+let pendingTerrain=false;
+function rebuildLandscape(){ pendingTerrain=true; }
+noiseTog.onclick=()=>{noise.on=!noise.on;applyNoiseUI();rebuildLandscape();};
+nmagEl.oninput=()=>{noise.mag=parseFloat(nmagEl.value);document.getElementById("nmagval").textContent=noise.mag.toFixed(2);if(noise.on)rebuildLandscape();};
+nfreqEl.oninput=()=>{noise.freq=parseFloat(nfreqEl.value);document.getElementById("nfreqval").textContent=noise.freq.toFixed(1);if(noise.on)rebuildLandscape();};
+document.getElementById("nregen").onclick=()=>{noise.seed=(Math.random()*1e9)|0;if(!noise.on){noise.on=true;applyNoiseUI();}rebuildLandscape();};
+applyNoiseUI();
+
+// buttons
+const playBtn=document.getElementById("play");
+playBtn.onclick=()=>{playing=!playing;playBtn.textContent=playing?"Pause":"Play";};
+document.getElementById("reset").onclick=()=>{playing=true;playBtn.textContent="Pause";buildRunners();};
+document.getElementById("rand").onclick=()=>{
+  startPt=[T.xmin+Math.random()*(T.xmax-T.xmin),T.ymin+Math.random()*(T.ymax-T.ymin)];
+  playing=true;playBtn.textContent="Pause";buildRunners();
+};
+
+function loadTerrain(k){curKey=k;buildSurface(k);startPt=TERRAINS[k].start.slice();playing=true;playBtn.textContent="Pause";buildRunners();}
+
+/* ---------- pointer: orbit / zoom / click-to-place / hover-pick ---------- */
+let dragging=false,downX=0,downY=0,moved=0,lastX=0,lastY=0;
+canvas.addEventListener("pointerdown",e=>{dragging=true;downX=lastX=e.clientX;downY=lastY=e.clientY;moved=0;});
+window.addEventListener("pointermove",e=>{
+  if(dragging){
+    const dx=e.clientX-lastX,dy=e.clientY-lastY;moved+=Math.abs(dx)+Math.abs(dy);
+    camTheta-=dx*0.006; camPhi-=dy*0.006; lastX=e.clientX;lastY=e.clientY; updateCam();
+    return;
+  }
+  if(e.target&&e.target.id==="scene") pickHover(e);   // hovering a ball highlights its name
+});
+window.addEventListener("pointerup",e=>{
+  if(dragging&&moved<5){tryPlace(e);} dragging=false;
+});
+canvas.addEventListener("wheel",e=>{e.preventDefault();camR*=(1+Math.sign(e.deltaY)*0.08);updateCam();},{passive:false});
+
+const _pv=new THREE.Vector3();
+function pickHover(e){
+  let best=null,bd=28;
+  const w=window.innerWidth,h=window.innerHeight;
+  runners.forEach(r=>{
+    _pv.copy(r.head.position).project(camera);
+    if(_pv.z>1)return; // behind camera
+    const sx=(_pv.x*0.5+0.5)*w, sy=(-_pv.y*0.5+0.5)*h;
+    const d=Math.hypot(sx-e.clientX,sy-e.clientY);
+    if(d<bd){bd=d;best=r.key;}
+  });
+  if(best!==hoverKey) setHover(best);
+}
+
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+function tryPlace(e){
+  if(!surfMesh)return;
+  mouse.x=(e.clientX/window.innerWidth)*2-1;
+  mouse.y=-(e.clientY/window.innerHeight)*2+1;
+  ray.setFromCamera(mouse,camera);
+  const hit=ray.intersectObject(surfMesh);
+  if(hit.length){
+    const px=fromSceneX(hit[0].point.x), py=fromSceneZ(hit[0].point.z);
+    if(px>=T.xmin&&px<=T.xmax&&py>=T.ymin&&py<=T.ymax){
+      startPt=[px,py];playing=true;playBtn.textContent="Pause";buildRunners();
+    }
+  }
+}
+
+/* ============================================================
+   LOSS vs STEP PLOT  (log-y; what we care about: the time-loss trade-off)
+   ============================================================ */
+const plotCanvas=document.getElementById("plotc");
+const pctx=plotCanvas.getContext("2d");
+let plotW=0,plotH=0,PDPR=1;
+function resizePlot(){
+  PDPR=Math.min(window.devicePixelRatio,2);
+  const r=plotCanvas.getBoundingClientRect();
+  plotW=r.width; plotH=r.height;
+  plotCanvas.width=Math.round(plotW*PDPR); plotCanvas.height=Math.round(plotH*PDPR);
+  pctx.setTransform(PDPR,0,0,PDPR,0,0);
+}
+const PAD={l:34,r:8,t:6,b:16};
+let plotXMax=2, plotYMin=1e-6, plotYMax=1; // current axis ranges (for hover hit-testing)
+function loseAt(r,step){ // loss value of runner r at a given step (clamped to its history)
+  const i=Math.min(step,r.hist.length-1); return r.hist[i];
+}
+function drawPlot(){
+  if(!plotW)return;
+  pctx.clearRect(0,0,plotW,plotH);
+  if(!runners.length)return;
+  // axis ranges
+  let xMax=2,yMax=-Infinity,yMin=Infinity;
+  runners.forEach(r=>{
+    xMax=Math.max(xMax,r.hist.length-1);
+    for(let i=0;i<r.hist.length;i+= (r.hist.length>800?7:1)){
+      const v=r.hist[i]; if(isFinite(v)){ if(v>yMax)yMax=v; if(v>0&&v<yMin)yMin=v; }
+    }
+  });
+  if(!isFinite(yMax)||yMax<=0)yMax=1;
+  yMin=Math.max(yMin,yMax*1e-7); if(!(yMin>0))yMin=yMax*1e-7;
+  plotXMax=xMax; plotYMin=yMin; plotYMax=yMax;
+  const W=plotW-PAD.l-PAD.r, Hh=plotH-PAD.t-PAD.b;
+  const x2p=s=>PAD.l + (xMax>0? s/xMax:0)*W;
+  const ly0=Math.log10(yMax), ly1=Math.log10(yMin);
+  const y2p=v=>{const lv=Math.log10(Math.min(Math.max(v,yMin),yMax));return PAD.t + (ly0-lv)/((ly0-ly1)||1)*Hh;};
+
+  // grid: decade lines
+  pctx.strokeStyle="rgba(255,255,255,0.06)"; pctx.fillStyle="rgba(160,170,190,0.55)";
+  pctx.font="9px 'JetBrains Mono',monospace"; pctx.lineWidth=1; pctx.textBaseline="middle";
+  const decTop=Math.ceil(ly0), decBot=Math.floor(ly1);
+  for(let d=decBot;d<=decTop;d++){
+    const yp=y2p(Math.pow(10,d)); if(yp<PAD.t-1||yp>plotH-PAD.b+1)continue;
+    pctx.beginPath();pctx.moveTo(PAD.l,yp);pctx.lineTo(plotW-PAD.r,yp);pctx.stroke();
+    pctx.textAlign="right"; pctx.fillText("1e"+d,PAD.l-4,yp);
+  }
+  // x ticks
+  pctx.textAlign="center"; pctx.textBaseline="top";
+  for(let t=0;t<=4;t++){const s=Math.round(xMax*t/4);const xp=x2p(s);
+    pctx.fillText(s,xp,plotH-PAD.b+3);}
+
+  // curves
+  runners.forEach(r=>{
+    const dim = hoverKey!==null && r.key!==hoverKey;
+    pctx.strokeStyle=r.col; pctx.globalAlpha=dim?0.14:(hoverKey===r.key?1:0.92);
+    pctx.lineWidth=hoverKey===r.key?2.4:1.4;
+    pctx.beginPath();
+    const N=r.hist.length, stride=Math.max(1,Math.floor(N/(W*1.5)));
+    let started=false;
+    for(let i=0;i<N;i+=stride){const xp=x2p(i),yp=y2p(r.hist[i]);
+      if(!started){pctx.moveTo(xp,yp);started=true;}else pctx.lineTo(xp,yp);}
+    // ensure last sample drawn
+    const xpL=x2p(N-1),ypL=y2p(r.hist[N-1]); pctx.lineTo(xpL,ypL);
+    pctx.stroke();
+    // end dot
+    pctx.globalAlpha=dim?0.2:1; pctx.fillStyle=r.col;
+    pctx.beginPath();pctx.arc(xpL,ypL,hoverKey===r.key?3.2:2.2,0,7);pctx.fill();
+  });
+  pctx.globalAlpha=1;
+}
+// hover on plot -> highlight nearest curve (links to balls/names like everything else)
+plotCanvas.addEventListener("pointermove",e=>{
+  if(dragging||!runners.length)return;
+  const r=plotCanvas.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const W=plotW-PAD.l-PAD.r;
+  const step=Math.round(Math.max(0,Math.min(1,(mx-PAD.l)/(W||1)))*plotXMax);
+  const ly0=Math.log10(plotYMax),ly1=Math.log10(plotYMin),Hh=plotH-PAD.t-PAD.b;
+  const y2p=v=>PAD.t+(ly0-Math.log10(Math.min(Math.max(v,plotYMin),plotYMax)))/((ly0-ly1)||1)*Hh;
+  let best=null,bd=22;
+  runners.forEach(rr=>{const yp=y2p(loseAt(rr,step));const d=Math.abs(yp-my);if(d<bd){bd=d;best=rr.key;}});
+  if(best!==hoverKey)setHover(best);
+});
+plotCanvas.addEventListener("pointerleave",()=>setHover(null));
+
+/* ---------- resize ---------- */
+function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();resizePlot();}
+window.addEventListener("resize",resize);
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+let boardTick=0;
+function animate(){
+  requestAnimationFrame(animate);
+  if(pendingTerrain){ pendingTerrain=false; buildSurface(curKey); buildRunners(); }
+  if(playing){
+    for(let s=0;s<speed;s++){runners.forEach(stepRunner);stepCount++;}
+    boardTick++;
+    // gentle head pulse (+ hover emphasis)
+    const t=performance.now()*0.004;
+    runners.forEach(r=>{let sc=r.status==="run"?0.32+Math.sin(t)*0.05:0.26;if(r._emph)sc*=1.8;r.halo.scale.set(sc,sc,sc);});
+    if(boardTick%4===0)updateBoard();
+  }
+  drawPlot();
+  renderer.render(scene,camera);
+}
+
+/* ---------- boot ---------- */
+resize();
+buildSurface("ravine");
+startPt=TERRAINS.ravine.start.slice();
+updateCam();
+buildRunners();
+animate();
+</script>
+</body>
+</html>
