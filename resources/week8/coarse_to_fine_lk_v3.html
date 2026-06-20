@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coarse-to-Fine Lucas–Kanade — interactive</title>
+<style>
+  :root{
+    --bg:#0b0d1a; --bg2:#11142a; --panel:#141832; --panel2:#1a1f3d;
+    --ink:#eef0fb; --mut:#9aa0c8; --faint:#6b7099; --grid:#272c52;
+    --vec:#3fe0a0; --truth:#ff5d6c; --step:#b39dff; --pt:#ffd23f;
+    --active:#46d4e6; --ok:#7CFFB2; --warp:#ff9f43;
+    --fA:#ff5d6c;   /* overlay: F channel (red) */
+    --fB:#46d4e6;   /* overlay: G channel (cyan) */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:
+    radial-gradient(1200px 700px at 80% -10%, #16193a 0%, transparent 60%),
+    radial-gradient(1000px 600px at -10% 110%, #161d36 0%, transparent 55%), var(--bg);
+    color:var(--ink);
+    font-family:"SF Mono","JetBrains Mono","Fira Code",ui-monospace,Menlo,Consolas,monospace;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1340px;margin:0 auto;padding:22px 22px 60px;}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--grid);padding-bottom:14px;margin-bottom:8px;}
+  h1{font-size:19px;font-weight:600;letter-spacing:-0.2px;margin:0;}
+  h1 .accent{color:var(--active);}
+  .sub{color:var(--mut);font-size:12.5px;}
+  .tag{font-size:10.5px;color:var(--faint);border:1px solid var(--grid);border-radius:999px;padding:3px 9px;}
+
+  .layout{display:grid;grid-template-columns: 1fr 320px;gap:22px;align-items:start;margin-top:14px;}
+  @media(max-width:1080px){.layout{grid-template-columns:1fr;}}
+
+  /* ---- pyramid column ---- */
+  .pyr-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 14px 2px;}
+  .pyr-title{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:1.6px;}
+  .pyramid{display:flex;flex-direction:column;gap:0;}
+
+  .lvl{position:relative;display:grid;grid-template-columns: 1fr 26px;gap:0;align-items:center;
+    transition:opacity .3s;}
+  .lvl .panels{display:flex;gap:10px;align-items:flex-start;padding:6px 0;}
+  .levelbox{position:relative;border:1.5px solid var(--grid);border-radius:10px;overflow:hidden;
+    background:#0e1124;transition:border-color .25s, box-shadow .25s;flex:0 0 auto;}
+  .levelbox.active{border-color:var(--active);box-shadow:0 0 0 1px var(--active),0 10px 34px -12px rgba(70,212,230,.55);}
+  .levelbox canvas{display:block;image-rendering:auto;}
+  .panel-label{position:absolute;top:5px;left:7px;font-size:9.5px;letter-spacing:.3px;color:var(--mut);
+    background:rgba(8,10,24,.74);padding:1px 6px;border-radius:5px;pointer-events:none;}
+  .panel-label.fA{color:var(--fA);} .panel-label.fB{color:var(--fB);}
+  .levelmeta{position:absolute;bottom:5px;left:7px;font-size:9px;color:var(--faint);
+    background:rgba(8,10,24,.7);padding:1px 6px;border-radius:5px;pointer-events:none;}
+
+  /* travelling control card that sits beside the active level */
+  .lvl .sidectrl{grid-column:1;justify-self:start;align-self:start;margin-top:6px;display:none;}
+  .lvl.active .sidectrl{display:block;}
+  .sidecard{background:linear-gradient(180deg,var(--panel),#10132a);border:1px solid var(--active);
+    border-radius:12px;padding:11px 13px;max-width:560px;box-shadow:0 8px 30px -14px rgba(70,212,230,.5);}
+  .sidecard .phaseline{font-size:11.5px;color:var(--ink);line-height:1.6;margin-bottom:9px;}
+  .sidecard .phaseline .big{color:var(--step);font-weight:600;}
+  .sidecard .phaseline b{color:var(--active);}
+  .sidecard .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .nextbtn{font-family:inherit;font-size:12.5px;border-radius:9px;padding:8px 13px;cursor:pointer;border:none;
+    background:linear-gradient(180deg,#2bd4c0,#16a89a);color:#04201d;font-weight:600;transition:filter .15s;}
+  .nextbtn:hover{filter:brightness(1.08);}
+  .nextbtn .nx{opacity:.8;font-weight:500;}
+  .minibtn{font-family:inherit;font-size:11px;border-radius:8px;padding:7px 10px;cursor:pointer;
+    border:1px solid var(--grid);background:var(--panel2);color:var(--ink);}
+  .minibtn:hover{border-color:var(--mut);}
+  .phasechips{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap;}
+  .pchip{font-size:9.5px;padding:2px 7px;border-radius:999px;border:1px solid var(--grid);color:var(--faint);
+    display:flex;align-items:center;gap:4px;}
+  .pchip .d{width:5px;height:5px;border-radius:50%;background:var(--faint);}
+  .pchip.on{color:var(--ink);border-color:currentColor;}
+  .pchip.warp.on{color:var(--warp);} .pchip.warp.on .d{background:var(--warp);}
+  .pchip.over.on{color:var(--fB);} .pchip.over.on .d{background:var(--fB);}
+  .pchip.solve.on{color:var(--step);} .pchip.solve.on .d{background:var(--step);}
+  .pchip.add.on{color:var(--vec);} .pchip.add.on .d{background:var(--vec);}
+
+  /* up arrow between levels */
+  .upcell{grid-column:2;grid-row:1;justify-self:center;align-self:center;height:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--faint);}
+  .uparrow{display:flex;flex-direction:column;align-items:center;gap:2px;opacity:.45;transition:opacity .3s, color .3s;}
+  .uparrow.show{opacity:1;color:var(--ok);}
+  .uparrow .lab{font-size:8.5px;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;letter-spacing:.5px;}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 0 2px;font-size:11px;color:var(--mut);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:18px;height:3px;border-radius:2px;display:inline-block;}
+  .swatch.dot{width:9px;height:9px;border-radius:50%;}
+
+  /* ---- right controls ---- */
+  .col-ctrl{display:flex;flex-direction:column;gap:14px;position:sticky;top:16px;}
+  .ctrlcard{background:linear-gradient(180deg,var(--panel),#10132a);border:1px solid var(--grid);border-radius:14px;padding:15px;}
+  .ctrlcard h3{margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--mut);}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;}
+  button.gbtn{font-family:inherit;font-size:12px;border-radius:9px;padding:9px 13px;cursor:pointer;border:1px solid var(--grid);background:var(--panel2);color:var(--ink);transition:all .15s;}
+  button.gbtn:hover{border-color:var(--mut);}
+  button.gbtn.primary{background:linear-gradient(180deg,#2bd4c0,#16a89a);color:#04201d;border:none;font-weight:600;}
+  button.gbtn.ghost{background:transparent;}
+  button.gbtn:disabled{opacity:.4;cursor:not-allowed;}
+  .ctrlrow{margin-bottom:13px;} .ctrlrow:last-child{margin-bottom:0;}
+  .ctrlrow label{display:flex;justify-content:space-between;font-size:12px;color:var(--ink);margin-bottom:6px;}
+  .ctrlrow label .val{color:var(--active);font-weight:600;}
+  input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:3px;background:var(--grid);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--active);cursor:pointer;border:2px solid #0b0d1a;box-shadow:0 0 0 1px var(--active);}
+  input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--active);cursor:pointer;border:2px solid #0b0d1a;}
+  .toggle{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--mut);cursor:pointer;}
+  .toggle input{accent-color:var(--active);}
+  .plotwrap canvas{width:100%;height:auto;display:block;}
+  .plot-cap{font-size:10.5px;color:var(--faint);margin-top:6px;line-height:1.5;}
+  .footnote{margin-top:24px;color:var(--faint);font-size:11px;line-height:1.7;border-top:1px solid var(--grid);padding-top:14px;}
+  .footnote code{color:var(--mut);background:var(--bg2);padding:1px 5px;border-radius:4px;}
+  .kbd{font-size:10px;border:1px solid var(--grid);border-radius:4px;padding:1px 5px;color:var(--mut);}
+  /* hidden source image */
+  #srcImg{display:none;}
+
+  /* accumulation panel header */
+  .panel-label.acc{color:var(--ok);}
+  /* process trace: small flowchart annotation that accretes beside finished levels */
+  .proctrace{display:flex;align-items:center;gap:5px;font-size:8.5px;color:var(--mut);
+    margin-top:5px;flex-wrap:wrap;opacity:0;transition:opacity .4s;}
+  .proctrace.show{opacity:.85;}
+  .proc-node{border:1px solid var(--grid);border-radius:5px;padding:2px 6px;background:#10132a;white-space:nowrap;}
+  .proc-node.warp{border-color:var(--warp);color:var(--warp);}
+  .proc-node.solve{border-color:var(--step);color:var(--step);}
+  .proc-node.loop{border-color:var(--vec);color:var(--vec);}
+  .proc-node.up{border-color:var(--ok);color:var(--ok);}
+  .proc-arrow{color:var(--faint);font-size:9px;}
+  /* vertical connector line drawn down the pyramid spine */
+  .spine{position:absolute;left:-14px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,transparent,var(--grid) 8%,var(--grid) 92%,transparent);pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Coarse-to-Fine <span class="accent">Lucas–Kanade</span></h1>
+    <span class="sub">F vs. backward-warped G at every scale · in-scale Gauss–Newton</span>
+    <span class="tag" id="epeTag">EPE —</span>
+  </header>
+
+  <div class="layout">
+    <div class="col-pyr">
+      <div class="pyr-head">
+        <span class="pyr-title">Pyramid · coarse → fine &nbsp;·&nbsp; F | warped-G per level</span>
+      </div>
+      <div class="pyramid" id="pyramid"></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--vec)"></i>estimate</span>
+        <span><i class="swatch" style="background:var(--truth)"></i>ground truth</span>
+        <span><i class="swatch" style="background:var(--step)"></i>increment Δ</span>
+        <span><i class="swatch dot" style="background:var(--pt)"></i>feature</span>
+        <span style="margin-left:8px;"><i class="swatch" style="background:var(--fA)"></i>F&nbsp;/&nbsp;<i class="swatch" style="background:var(--fB)"></i>G&nbsp;in overlay</span>
+      </div>
+      <div class="legend" id="levelLegend" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="col-ctrl">
+      <div class="ctrlcard">
+        <h3>Run</h3>
+        <div class="btns" style="margin-bottom:10px;">
+          <button class="gbtn primary" id="btnNext">Next ▸</button>
+          <button class="gbtn" id="btnPlay">▶ Play</button>
+          <button class="gbtn ghost" id="btnReset">Reset</button>
+        </div>
+        <div class="btns">
+          <button class="gbtn ghost" id="btnLevel">Skip level ⤓</button>
+          <label class="toggle"><input type="checkbox" id="chkTruth" checked> show truth</label>
+        </div>
+        <div class="btns" style="margin-top:10px;">
+          <button class="gbtn ghost" id="btnFlipAll">⇄ flip all levels</button>
+          <label class="toggle"><input type="checkbox" id="chkFlip" checked> flip active level</label>
+        </div>
+      </div>
+
+      <div class="ctrlcard">
+        <h3>Inner-scale convergence</h3>
+        <div class="plotwrap"><canvas id="plot" width="640" height="280"></canvas></div>
+        <div class="plot-cap">Mean step |Δ| per inner iteration. Dashed ×2 = level change. Bars shrink as Gauss–Newton converges within each scale.</div>
+      </div>
+
+      <div class="ctrlcard">
+        <h3>Parameters</h3>
+        <div class="ctrlrow"><label>Pyramid levels <span class="val" id="vLevels">4</span></label><input type="range" id="sLevels" min="1" max="5" step="1" value="4"></div>
+        <div class="ctrlrow"><label>Window radius (px) <span class="val" id="vWin">7</span></label><input type="range" id="sWin" min="3" max="14" step="1" value="7"></div>
+        <div class="ctrlrow"><label>Inner iterations / level <span class="val" id="vInner">4</span></label><input type="range" id="sInner" min="1" max="8" step="1" value="4"></div>
+        <div class="ctrlrow"><label>Pyramid blur σ <span class="val" id="vSigma">1.0</span></label><input type="range" id="sSigma" min="0.4" max="2.0" step="0.1" value="1.0"></div>
+        <div class="ctrlrow"><label>True translation X <span class="val" id="vTx">11</span></label><input type="range" id="sTx" min="-18" max="18" step="1" value="11"></div>
+        <div class="ctrlrow"><label>True translation Y <span class="val" id="vTy">7</span></label><input type="range" id="sTy" min="-18" max="18" step="1" value="7"></div>
+        <div class="ctrlrow"><label>Swirl strength <span class="val" id="vSwirl">3.0</span></label><input type="range" id="sSwirl" min="0" max="5" step="0.2" value="3.0"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Per level, per inner iteration: <code>backward-warp G by current w (sample G at x+w) → recompute Iₓ,I_y,I_t on the warped window → solve Δw=(AᵀA)⁻¹Aᵀy → w←w+Δw</code>.
+    The middle panel is that warped G — watch it slide onto F. The <b>overlay</b> step superimposes them (F red, G cyan); colour fringing = remaining misalignment the next step removes.
+    Crossing a level multiplies positions <i>and</i> vectors by 2. <span class="kbd">N</span> next · <span class="kbd">Space</span> play · <span class="kbd">R</span> reset.
+    <br><span style="color:var(--faint)">Texture: a frame from your Fusilli Jerry clip; the second frame is generated by a known flow so the green estimate can be checked against red ground truth.</span>
+  </div>
+</div>
+
+<img id="srcImg" src="data:image/jpeg;base64,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" alt="">
+<script>
+/* ============================================================
+   Coarse-to-Fine Lucas-Kanade — interactive (v2)
+   - Pyramid is the whole stage; each level shows F | warped-G (+ overlay step)
+   - Real backward warping, visible as G sliding onto F
+   - Controls travel to the active level; Next labelled with next action
+   ============================================================ */
+(function(){
+const N=256;
+const $=id=>document.getElementById(id);
+const CSSv=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+// per-level arrow colors (origin-level coding for the accumulation panel)
+const LVLCOL=['#46d4e6','#5ad1b0','#b39dff','#ffd23f','#ff9f43'];
+// flip animation state
+let flipPhase=0;            // 0 -> show F, 1 -> show warped-G
+let flipRAF=null, flipLast=0;
+
+/* ---------- image structs ---------- */
+function Img(w,h){this.w=w;this.h=h;this.d=new Float32Array(w*h);}
+function RGB(w,h){this.w=w;this.h=h;this.r=new Float32Array(w*h);this.g=new Float32Array(w*h);this.b=new Float32Array(w*h);}
+
+function sample(im,x,y){const w=im.w,h=im.h;if(x<0)x=-x;if(y<0)y=-y;if(x>w-1)x=2*(w-1)-x;if(y>h-1)y=2*(h-1)-y;if(x<0)x=0;if(y<0)y=0;if(x>w-1)x=w-1;if(y>h-1)y=h-1;const x0=Math.floor(x),y0=Math.floor(y),x1=Math.min(x0+1,w-1),y1=Math.min(y0+1,h-1),fx=x-x0,fy=y-y0,a=im.d[y0*w+x0],b=im.d[y0*w+x1],c=im.d[y1*w+x0],e=im.d[y1*w+x1];return a*(1-fx)*(1-fy)+b*fx*(1-fy)+c*(1-fx)*fy+e*fx*fy;}
+function sampleC(im,ch,x,y){const w=im.w,h=im.h;if(x<0)x=-x;if(y<0)y=-y;if(x>w-1)x=2*(w-1)-x;if(y>h-1)y=2*(h-1)-y;if(x<0)x=0;if(y<0)y=0;if(x>w-1)x=w-1;if(y>h-1)y=h-1;const x0=Math.floor(x),y0=Math.floor(y),x1=Math.min(x0+1,w-1),y1=Math.min(y0+1,h-1),fx=x-x0,fy=y-y0;const arr=im[ch];const a=arr[y0*w+x0],b=arr[y0*w+x1],c=arr[y1*w+x0],e=arr[y1*w+x1];return a*(1-fx)*(1-fy)+b*fx*(1-fy)+c*(1-fx)*fy+e*fx*fy;}
+
+function blurArr(src,w,h,sigma){const r=Math.max(1,Math.ceil(sigma*3)),k=[];let s=0;for(let i=-r;i<=r;i++){const v=Math.exp(-(i*i)/(2*sigma*sigma));k.push(v);s+=v;}for(let i=0;i<k.length;i++)k[i]/=s;const tmp=new Float32Array(w*h),out=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let acc=0;for(let i=-r;i<=r;i++){let xx=x+i;if(xx<0)xx=-xx;if(xx>w-1)xx=2*(w-1)-xx;acc+=src[y*w+xx]*k[i+r];}tmp[y*w+x]=acc;}for(let y=0;y<h;y++)for(let x=0;x<w;x++){let acc=0;for(let i=-r;i<=r;i++){let yy=y+i;if(yy<0)yy=-yy;if(yy>h-1)yy=2*(h-1)-yy;acc+=tmp[yy*w+x]*k[i+r];}out[y*w+x]=acc;}return out;}
+function blur(im,sigma){const o=new Img(im.w,im.h);o.d=blurArr(im.d,im.w,im.h,sigma);return o;}
+function blurRGB(im,sigma){const o=new RGB(im.w,im.h);o.r=blurArr(im.r,im.w,im.h,sigma);o.g=blurArr(im.g,im.w,im.h,sigma);o.b=blurArr(im.b,im.w,im.h,sigma);return o;}
+function downRGB(im,sigma){const b=blurRGB(im,sigma),w=Math.floor(im.w/2),h=Math.floor(im.h/2),o=new RGB(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){o.r[y*w+x]=b.r[2*y*im.w+2*x];o.g[y*w+x]=b.g[2*y*im.w+2*x];o.b[y*w+x]=b.b[2*y*im.w+2*x];}return o;}
+function down(im,sigma){const b=blur(im,sigma),w=Math.floor(im.w/2),h=Math.floor(im.h/2),o=new Img(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)o.d[y*w+x]=b.d[2*y*im.w+2*x];return o;}
+function luma(im){const o=new Img(im.w,im.h);for(let i=0;i<im.w*im.h;i++)o.d[i]=0.299*im.r[i]+0.587*im.g[i]+0.114*im.b[i];return o;}
+function gradients(im){const w=im.w,h=im.h,gx=new Img(w,h),gy=new Img(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const xm=Math.max(0,x-1),xp=Math.min(w-1,x+1),ym=Math.max(0,y-1),yp=Math.min(h-1,y+1);gx.d[y*w+x]=(im.d[y*w+xp]-im.d[y*w+xm])*0.5;gy.d[y*w+x]=(im.d[yp*w+x]-im.d[ym*w+x])*0.5;}return{gx,gy};}
+
+/* ---------- load the embedded Jerry frame into an RGB float image ---------- */
+function loadSource(cb){
+  const img=$('srcImg');
+  const draw=()=>{
+    const c=document.createElement('canvas');c.width=N;c.height=N;
+    const ctx=c.getContext('2d');ctx.drawImage(img,0,0,N,N);
+    const id=ctx.getImageData(0,0,N,N).data;
+    const out=new RGB(N,N);
+    for(let i=0;i<N*N;i++){out.r[i]=id[i*4]/255;out.g[i]=id[i*4+1]/255;out.b[i]=id[i*4+2]/255;}
+    cb(out);
+  };
+  if(img.complete && img.naturalWidth) draw();
+  else img.onload=draw;
+}
+
+/* ---------- true flow (translation + swirl + divergence) ---------- */
+function trueFlow(P){return(x,y)=>{const cx=N/2,cy=N/2,r=Math.hypot(x-cx,y-cy)+1e-6;const sm=P.swirl*Math.exp(-(r*r)/(2*90*90));let ux=-(y-cy)/r*sm,uy=(x-cx)/r*sm;const dv=0.5*P.swirl/1.8*Math.exp(-(r*r)/(2*110*110));ux+=(x-cx)/r*dv;uy+=(y-cy)/r*dv;return[P.tx+ux,P.ty+uy];};}
+function warpFrameRGB(F,flow){const G=new RGB(N,N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const[u,v]=flow(x,y);G.r[y*N+x]=sampleC(F,'r',x-u,y-v);G.g[y*N+x]=sampleC(F,'g',x-u,y-v);G.b[y*N+x]=sampleC(F,'b',x-u,y-v);}return G;}
+
+/* ---------- feature selection (Shi-Tomasi on luma) ---------- */
+function selectFeatures(L,count){const{gx,gy}=gradients(L);const win=3;const score=(px,py)=>{let a=0,b=0,c=0;for(let dy=-win;dy<=win;dy++)for(let dx=-win;dx<=win;dx++){const x=px+dx,y=py+dy;if(x<0||y<0||x>=N||y>=N)continue;const ix=gx.d[y*N+x],iy=gy.d[y*N+x];a+=ix*ix;b+=iy*iy;c+=ix*iy;}const tr=a+b,det=a*b-c*c;return tr/2-Math.sqrt(Math.max(0,tr*tr/4-det));};const cand=[],m=28;for(let y=m;y<N-m;y+=7)for(let x=m;x<N-m;x+=7)cand.push([score(x,y),x,y]);cand.sort((p,q)=>q[0]-p[0]);const chosen=[],minD=32;for(const[s,x,y]of cand){if(chosen.every(c=>(c.x-x)**2+(c.y-y)**2>minD*minD))chosen.push({x,y});if(chosen.length>=count)break;}return chosen;}
+
+/* ---------- one Gauss-Newton LK step (backward warp) ---------- */
+function lkStep(Lf,Lg,gxl,gyl,pts,U,V,winR){const M=pts.length,dU=new Float32Array(M),dV=new Float32Array(M),res=new Float32Array(M);for(let i=0;i<M;i++){const px=pts[i].x,py=pts[i].y;let Axx=0,Axy=0,Ayy=0,bx=0,by=0,sse=0,nn=0;for(let dy=-winR;dy<=winR;dy++)for(let dx=-winR;dx<=winR;dx++){const x=px+dx,y=py+dy,Iff=sample(Lf,x,y),Igw=sample(Lg,x+U[i],y+V[i]),It=Igw-Iff,ix=sample(gxl,x,y),iy=sample(gyl,x,y);Axx+=ix*ix;Ayy+=iy*iy;Axy+=ix*iy;bx+=-ix*It;by+=-iy*It;sse+=It*It;nn++;}const lam=1e-2*(Axx+Ayy)+1e-4,a=Axx+lam,d=Ayy+lam,b=Axy,det=a*d-b*b;let du=0,dv=0;if(Math.abs(det)>1e-9){du=(d*bx-b*by)/det;dv=(-b*bx+a*by)/det;}dU[i]=du;dV[i]=dv;res[i]=Math.sqrt(sse/Math.max(1,nn));}return{dU,dV,res};}
+
+/* ============================================================ STATE ============ */
+let S=null, SRC=null;
+
+function rebuild(){
+  if(!SRC){ loadSource(rgb=>{SRC=rgb; rebuild();}); return; }
+  const P={levels:+$('sLevels').value,win:+$('sWin').value,inner:+$('sInner').value,
+    sigma:+$('sSigma').value,tx:+$('sTx').value,ty:+$('sTy').value,swirl:+$('sSwirl').value};
+  const F=SRC, flow=trueFlow(P), G=warpFrameRGB(F,flow);
+  // pyramids (color for display, luma for math)
+  const PFc=[F],PGc=[G];
+  for(let l=1;l<P.levels;l++){PFc.push(downRGB(PFc[l-1],P.sigma));PGc.push(downRGB(PGc[l-1],P.sigma));}
+  PFc.reverse();PGc.reverse();
+  const PFl=PFc.map(luma), PGl=PGc.map(luma);
+  const grads=PFl.map(gradients);
+  const feats=selectFeatures(luma(F),12);
+  const TF=feats.map(p=>flow(p.x,p.y));
+
+  // precompute run with per-iteration phases:
+  //   enter(lvl) -> for it: warp(lvl,it) -> overlay(lvl,it) -> solveadd(lvl,it) -> upsample
+  const states=[];
+  let U=new Float32Array(feats.length),V=new Float32Array(feats.length);
+  const L=P.levels;
+  for(let lvl=0;lvl<L;lvl++){
+    const sc=Math.pow(2,L-1-lvl);
+    const pts=feats.map(p=>({x:p.x/sc,y:p.y/sc}));
+    states.push({type:'enter',lvl,sc,pts,U:U.slice(),V:V.slice()});
+    for(let it=0;it<P.inner;it++){
+      // warp + overlay show the CURRENT flow (before this step's solve)
+      states.push({type:'warp',lvl,it,sc,pts,U:U.slice(),V:V.slice()});
+      states.push({type:'overlay',lvl,it,sc,pts,U:U.slice(),V:V.slice()});
+      const {gx,gy}=grads[lvl];
+      const r=lkStep(PFl[lvl],PGl[lvl],gx,gy,pts,U,V,P.win);
+      const Un=U.slice(),Vn=V.slice();
+      for(let i=0;i<U.length;i++){Un[i]+=r.dU[i];Vn[i]+=r.dV[i];}
+      let ms=0;for(let i=0;i<U.length;i++)ms+=Math.hypot(r.dU[i],r.dV[i]);ms/=U.length;
+      let mr=0;for(let i=0;i<r.res.length;i++)mr+=r.res[i];mr/=r.res.length;
+      states.push({type:'solveadd',lvl,it,sc,pts,Uprev:U.slice(),Vprev:V.slice(),U:Un.slice(),V:Vn.slice(),dU:r.dU.slice(),dV:r.dV.slice(),meanStep:ms,meanRes:mr});
+      U=Un;V=Vn;
+    }
+    if(lvl<L-1){for(let i=0;i<U.length;i++){U[i]*=2;V[i]*=2;}states.push({type:'upsample',lvl,to:lvl+1,U:U.slice(),V:V.slice()});}
+  }
+  let epe=0;for(let i=0;i<feats.length;i++)epe+=Math.hypot(U[i]-TF[i][0],V[i]-TF[i][1]);epe/=feats.length;
+
+  // ---- per-level converged flow in FINEST-px units, and net contribution per level ----
+  // levelFlowFine[lvl][i] = flow vector at feature i after finishing that level (finest px)
+  // levelContribFine[lvl][i] = contribution added DURING that level (finest px)
+  const levelFlowFine=[], levelContribFine=[];
+  // walk states again, capturing the U,V right after the last solveadd of each level
+  for(let lvl=0;lvl<L;lvl++){
+    // find last solveadd of this level
+    let lastSA=null;
+    for(const s of states){ if(s.type==='solveadd'&&s.lvl===lvl) lastSA=s; }
+    const scl=Math.pow(2,L-1-lvl);
+    const ff=[]; for(let i=0;i<feats.length;i++) ff.push([lastSA.U[i]*scl, lastSA.V[i]*scl]);
+    levelFlowFine.push(ff);
+  }
+  for(let lvl=0;lvl<L;lvl++){
+    const cc=[];
+    for(let i=0;i<feats.length;i++){
+      const cur=levelFlowFine[lvl][i];
+      const prev=lvl>0?levelFlowFine[lvl-1][i]:[0,0];
+      cc.push([cur[0]-prev[0], cur[1]-prev[1]]);
+    }
+    levelContribFine.push(cc);
+  }
+
+  S={P,PFc,PGc,PFl,PGl,grads,feats,TF,states,epe,idx:0,playing:false,
+     levelFlowFine,levelContribFine};
+  buildDOM();
+  $('epeTag').textContent='final EPE '+epe.toFixed(2)+'px';
+  gotoIdx(0);
+}
+
+/* ---------- build per-level DOM ---------- */
+let pyr=[]; // per level: {row, fA(canvas), fB(canvas), overlayCanvas, sidecard refs, uparrow}
+function buildDOM(){
+  const host=$('pyramid');host.innerHTML='';pyr=[];
+  const L=S.P.levels;
+  const minW=96,maxW=176;
+  for(let lvl=0;lvl<L;lvl++){
+    const frac=L===1?1:lvl/(L-1);
+    const dispW=Math.round(minW+(maxW-minW)*frac);
+    const row=document.createElement('div');row.className='lvl';row.dataset.lvl=lvl;
+
+    const panels=document.createElement('div');panels.className='panels';
+    // F panel
+    const boxA=mkBox(dispW,'F','fA',lvl);
+    // warped-G panel
+    const boxB=mkBox(dispW,'G(x+w)','fB',lvl);
+    // accumulation panel (arrows only, color-coded by origin level)
+    const boxC=mkBox(dispW,'Σ flow','acc',lvl);
+    panels.appendChild(boxA.box);panels.appendChild(boxB.box);panels.appendChild(boxC.box);
+    row.appendChild(panels);
+
+    // process-trace flowchart (accretes once this level is done / passed)
+    const trace=document.createElement('div');trace.className='proctrace';trace.dataset.lvl=lvl;
+    row.appendChild(trace);
+
+    // up arrow cell (between this and coarser-above). Put arrow that belongs ABOVE this level
+    const up=document.createElement('div');up.className='upcell';
+    if(lvl>0){
+      const ar=document.createElement('div');ar.className='uparrow';ar.dataset.to=lvl;
+      ar.innerHTML=`<svg width="16" height="30"><line x1="8" y1="28" x2="8" y2="6" stroke="currentColor" stroke-width="1.5"/><polyline points="4,11 8,5 12,11" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span class="lab">×2</span>`;
+      up.appendChild(ar);pyr.upArrow=pyr.upArrow||[];pyr.upArrow[lvl]=ar;
+    }
+    row.appendChild(up);
+
+    // traveling side control (shown only when active)
+    const side=document.createElement('div');side.className='sidectrl';
+    side.innerHTML=`<div class="sidecard">
+      <div class="phasechips">
+        <span class="pchip warp" data-p="warp"><span class="d"></span>warp</span>
+        <span class="pchip over" data-p="overlay"><span class="d"></span>overlay</span>
+        <span class="pchip solve" data-p="solveadd"><span class="d"></span>solve + add</span>
+      </div>
+      <div class="phaseline" data-role="line"></div>
+      <div class="row">
+        <button class="nextbtn" data-role="next">Next ▸ <span class="nx" data-role="nx"></span></button>
+        <button class="minibtn" data-role="play">▶</button>
+        <button class="minibtn" data-role="skip">skip level ⤓</button>
+      </div></div>`;
+    row.appendChild(side);
+
+    host.appendChild(row);
+    pyr.push({row,dispW,
+      fA:boxA.cv,fB:boxB.cv,acc:boxC.cv,trace,
+      side, line:side.querySelector('[data-role=line]'),
+      nextBtn:side.querySelector('[data-role=next]'),
+      nx:side.querySelector('[data-role=nx]'),
+      playBtn:side.querySelector('[data-role=play]'),
+      skipBtn:side.querySelector('[data-role=skip]'),
+      chips:side.querySelectorAll('.pchip')});
+  }
+  // wire traveling buttons (all levels share the same handlers)
+  pyr.forEach(p=>{
+    p.nextBtn.onclick=next;
+    p.playBtn.onclick=togglePlay;
+    p.skipBtn.onclick=skipLevel;
+  });
+  // level color legend
+  const ll=$('levelLegend'); if(ll){ ll.innerHTML='<span style="color:var(--faint)">Σ arrows by origin level:</span> '+
+    Array.from({length:S.P.levels},(_,l)=>`<span><i class="swatch" style="background:${LVLCOL[l]}"></i>L${l}</span>`).join(''); }
+}
+function mkBox(dispW,label,cls,lvl){
+  const box=document.createElement('div');box.className='levelbox';box.dataset.lvl=lvl;
+  const cv=document.createElement('canvas');cv.width=dispW;cv.height=dispW;
+  box.appendChild(cv);
+  const lab=document.createElement('div');lab.className='panel-label '+cls;lab.textContent=label;box.appendChild(lab);
+  const meta=document.createElement('div');meta.className='levelmeta';
+  meta.textContent=`L${lvl} · ${S.PFc[lvl].w}²`;box.appendChild(meta);
+  return {box,cv};
+}
+
+/* ---------- drawing ---------- */
+function drawRGBTo(ctx,im,dispW){
+  const sz=im.w,off=document.createElement('canvas');off.width=sz;off.height=sz;
+  const octx=off.getContext('2d'),id=octx.createImageData(sz,sz);
+  for(let i=0;i<sz*sz;i++){id.data[i*4]=Math.max(0,Math.min(255,im.r[i]*255))|0;id.data[i*4+1]=Math.max(0,Math.min(255,im.g[i]*255))|0;id.data[i*4+2]=Math.max(0,Math.min(255,im.b[i]*255))|0;id.data[i*4+3]=255;}
+  octx.putImageData(id,0,0);ctx.imageSmoothingEnabled=true;ctx.drawImage(off,0,0,dispW,dispW);
+}
+// warped RGB of G by per-pixel constant shift won't show swirl; but we want to SHOW the
+// backward warp using the current per-point flow as a smooth field. We approximate the
+// displayed warped-G by warping with a dense field interpolated from feature flow via
+// inverse-distance — good enough to visualize "G sliding onto F".
+function densenWarpG(lvl, pts, U, V){
+  const Gc=S.PGc[lvl], sz=Gc.w, out=new RGB(sz,sz);
+  // build smooth flow field from points (in this level's px) via IDW (cheap, few points)
+  const M=pts.length;
+  for(let y=0;y<sz;y++)for(let x=0;x<sz;x++){
+    let wsum=0,uu=0,vv=0;
+    for(let i=0;i<M;i++){const dx=x-pts[i].x,dy=y-pts[i].y,d2=dx*dx+dy*dy+1.0;const w=1/(d2*d2);wsum+=w;uu+=w*U[i];vv+=w*V[i];}
+    uu/=wsum;vv/=wsum;
+    out.r[y*sz+x]=sampleC(Gc,'r',x+uu,y+vv);
+    out.g[y*sz+x]=sampleC(Gc,'g',x+uu,y+vv);
+    out.b[y*sz+x]=sampleC(Gc,'b',x+uu,y+vv);
+  }
+  return out;
+}
+function arrow(ctx,x,y,u,v,color,lw,head){const len=Math.hypot(u,v);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;if(len<0.6){ctx.beginPath();ctx.arc(x,y,Math.max(1.2,lw),0,7);ctx.fill();return;}ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+u,y+v);ctx.stroke();const ang=Math.atan2(v,u),hl=head||5;ctx.beginPath();ctx.moveTo(x+u,y+v);ctx.lineTo(x+u-hl*Math.cos(ang-0.4),y+v-hl*Math.sin(ang-0.4));ctx.lineTo(x+u-hl*Math.cos(ang+0.4),y+v-hl*Math.sin(ang+0.4));ctx.closePath();ctx.fill();}
+
+/* ---------- accumulation panel: concatenated per-level contributions ----------
+   For each feature, draw the chain of per-level NET contributions tip-to-tail,
+   each segment colored by the level it was computed at. Magnitudes are shown in
+   THIS panel's level pixel units so growth across levels is visible (later levels
+   contribute longer segments). We draw chains up to and including `upToLvl`. */
+function renderAccum(lvl, upToLvl){
+  const P=pyr[lvl]; if(!P||!P.acc)return;
+  const cv=P.acc, ctx=cv.getContext('2d'), D=P.dispW;
+  ctx.clearRect(0,0,D,D);
+  ctx.fillStyle='#0c0f20'; ctx.fillRect(0,0,D,D);
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  const g=6; for(let i=1;i<g;i++){const t=i/g*D;ctx.beginPath();ctx.moveTo(t,0);ctx.lineTo(t,D);ctx.moveTo(0,t);ctx.lineTo(D,t);ctx.stroke();}
+  const L=S.P.levels, scThis=Math.pow(2,L-1-lvl);
+  const sclDisp=D/S.PFc[lvl].w;
+  const pts=S.feats.map(p=>({x:p.x/scThis, y:p.y/scThis}));
+  // amplify so the multi-colour chain & its growth are clearly visible on the grid
+  const AMP=2.4;
+  for(let i=0;i<pts.length;i++){
+    let cx=pts[i].x, cy=pts[i].y;
+    // base dot
+    ctx.fillStyle=CSSv('--pt');
+    ctx.beginPath();ctx.arc(cx*sclDisp,cy*sclDisp,2.0,0,7);ctx.fill();
+    for(let k=0;k<=upToLvl;k++){
+      const c=S.levelContribFine[k][i];
+      const ux=c[0]/scThis*AMP, uy=c[1]/scThis*AMP;
+      const col=LVLCOL[k%LVLCOL.length];
+      // segment
+      arrow(ctx, cx*sclDisp, cy*sclDisp, ux*sclDisp, uy*sclDisp, col, 2.2, 5.5);
+      cx+=ux; cy+=uy;
+      // joint dot (small) marking where one level's contribution ends / next begins
+      if(k<upToLvl){ ctx.fillStyle=col; ctx.beginPath();ctx.arc(cx*sclDisp,cy*sclDisp,1.6,0,7);ctx.fill(); }
+    }
+  }
+  ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font='8px monospace';
+  ctx.fillText(`Σ→L${upToLvl}  (×${AMP})`, 6, D-5);
+}
+
+/* ---------- which levels are "done" given current idx (for trace + accum) ---------- */
+function levelsDone(){
+  // a level is "done" once we've passed its last solveadd
+  const done=[];
+  for(let lvl=0;lvl<S.P.levels;lvl++){
+    let lastSAidx=-1;
+    for(let i=0;i<S.states.length;i++){const s=S.states[i];if(s.type==='solveadd'&&s.lvl===lvl)lastSAidx=i;}
+    done[lvl]=(S.idx>=lastSAidx && lastSAidx>=0);
+  }
+  return done;
+}
+
+/* ---------- accreting process-trace flowchart ---------- */
+function renderTrace(lvl, st){
+  const P=pyr[lvl]; if(!P||!P.trace)return;
+  const done=levelsDone();
+  const activeLvl=st.type==='upsample'?st.to:st.lvl;
+  // show the trace for any level we've entered (active or done)
+  const entered = lvl<=activeLvl || done[lvl];
+  if(!entered){ P.trace.classList.remove('show'); P.trace.innerHTML=''; return; }
+  const inner=S.P.inner;
+  // build flow-chart nodes: warp -> solve -> (×inner loop) -> upsample (if not last)
+  let html='';
+  html+=`<span class="proc-node warp">warp G</span><span class="proc-arrow">→</span>`;
+  html+=`<span class="proc-node solve">solve Δw</span><span class="proc-arrow">→</span>`;
+  html+=`<span class="proc-node loop">×${inner} (re-warp)</span>`;
+  if(lvl<S.P.levels-1){
+    html+=`<span class="proc-arrow">→</span><span class="proc-node up">upsample ×2 ↓</span>`;
+  } else {
+    html+=`<span class="proc-arrow">→</span><span class="proc-node up">final flow ✓</span>`;
+  }
+  P.trace.innerHTML=html;
+  P.trace.classList.add('show');
+}
+
+/* ---------- flip animation loop ---------- */
+function flipTick(ts){
+  if(!flipLast)flipLast=ts;
+  if(ts-flipLast>520){ flipPhase=1-flipPhase; flipLast=ts; refreshFlipPanels(); }
+  flipRAF=requestAnimationFrame(flipTick);
+}
+function startFlip(){ if(!flipRAF){ flipLast=0; flipRAF=requestAnimationFrame(flipTick); } }
+function stopFlip(){ if(flipRAF){ cancelAnimationFrame(flipRAF); flipRAF=null; } flipPhase=0; refreshFlipPanels(); }
+// redraw only the left (F|G flip) panels according to flipPhase, without recomputing state
+function refreshFlipPanels(){
+  if(!S)return;
+  const st=S.states[S.idx];
+  const flipActive=$('chkFlip').checked;
+  const flipAll=window._flipAll===true;
+  for(let lvl=0;lvl<S.P.levels;lvl++){
+    const activeNow=(st.lvl===lvl&&st.type!=='upsample')||(st.type==='upsample'&&(st.lvl===lvl||st.to===lvl));
+    const shouldFlip = flipAll || (flipActive && activeNow);
+    drawFlipPanel(lvl, st, shouldFlip);
+  }
+}
+
+/* render a single level's three panels given the current display state */
+function renderLevel(lvl, st){
+  const P=pyr[lvl]; if(!P)return;
+  const L=S.P.levels;
+  let last=null;
+  for(let i=S.idx;i>=0;i--){const s=S.states[i];if(s.lvl===lvl&&s.type!=='upsample'){last=s;break;}}
+  const activeNow=(st.lvl===lvl&&st.type!=='upsample')||(st.type==='upsample'&&(st.lvl===lvl||st.to===lvl));
+  // LEFT panel (F, or flipping F<->G)
+  const flipActive=$('chkFlip').checked, flipAll=window._flipAll===true;
+  drawFlipPanel(lvl, st, flipAll||(flipActive&&activeNow));
+  // MIDDLE panel (warped G or overlay)
+  drawMiddlePanel(lvl, st, last, activeNow);
+  // RIGHT panel (accumulation)
+  const activeLvl=st.type==='upsample'?st.to:st.lvl;
+  if(lvl<=activeLvl){ renderAccum(lvl, Math.min(lvl,activeLvl)); }
+  else { const c=P.acc.getContext('2d'); c.clearRect(0,0,P.dispW,P.dispW); c.fillStyle='#0c0f20'; c.fillRect(0,0,P.dispW,P.dispW); }
+  // process trace
+  renderTrace(lvl, st);
+}
+
+/* LEFT panel: F, or alternates F / warped-G when flipping */
+function drawFlipPanel(lvl, st, shouldFlip){
+  const P=pyr[lvl]; if(!P)return;
+  const szc=S.PFc[lvl].w, scl=P.dispW/szc, L=S.P.levels, scAll=Math.pow(2,L-1-lvl);
+  let last=null;
+  for(let i=S.idx;i>=0;i--){const s=S.states[i];if(s.lvl===lvl&&s.type!=='upsample'){last=s;break;}}
+  const activeNow=(st.lvl===lvl&&st.type!=='upsample')||(st.type==='upsample'&&(st.lvl===lvl||st.to===lvl));
+  const pts=(last?last.pts:S.feats.map(p=>({x:p.x/scAll,y:p.y/scAll})));
+  let U=null,V=null,showInc=false,dU,dV,Up,Vp;
+  if(last){ if(last.type==='solveadd'){U=last.U;V=last.V;if(activeNow&&st===last){showInc=true;dU=st.dU;dV=st.dV;Up=st.Uprev;Vp=st.Vprev;}} else {U=last.U;V=last.V;} }
+  const Uw=U||new Float32Array(pts.length), Vw=V||new Float32Array(pts.length);
+  const ctx=P.fA.getContext('2d'); ctx.clearRect(0,0,P.dispW,P.dispW);
+  if(shouldFlip && flipPhase===1){
+    const Gw=densenWarpG(lvl,pts,Uw,Vw);
+    drawRGBTo(ctx,Gw,P.dispW); setLabel(P.fA,'G(x+w) ⇄','fB');
+  } else {
+    drawRGBTo(ctx,S.PFc[lvl],P.dispW); setLabel(P.fA, shouldFlip?'F ⇄':'F','fA');
+  }
+  drawVectors(ctx,pts,Uw,Vw,scl,scAll,{showInc,dU,dV,Up,Vp,active:activeNow});
+  P.fA.parentElement.classList.toggle('active',activeNow);
+}
+
+/* MIDDLE panel: warped-G, or overlay during the overlay phase */
+function drawMiddlePanel(lvl, st, last, activeNow){
+  const P=pyr[lvl]; if(!P)return;
+  const szc=S.PFc[lvl].w, scl=P.dispW/szc, L=S.P.levels, scAll=Math.pow(2,L-1-lvl);
+  const pts=(last?last.pts:S.feats.map(p=>({x:p.x/scAll,y:p.y/scAll})));
+  let U=null,V=null; if(last){ U=last.U; V=last.V; }
+  const Uw=U||new Float32Array(pts.length), Vw=V||new Float32Array(pts.length);
+  const overlay=(activeNow && st.type==='overlay');
+  const ctx=P.fB.getContext('2d'); ctx.clearRect(0,0,P.dispW,P.dispW);
+  if(overlay){
+    const Gw=densenWarpG(lvl,pts,Uw,Vw); drawOverlay(ctx,S.PFc[lvl],Gw,P.dispW); setLabel(P.fB,'F ⊕ G(x+w)','fB');
+  } else {
+    const Gw=densenWarpG(lvl,pts,Uw,Vw); drawRGBTo(ctx,Gw,P.dispW);
+    drawVectors(ctx,pts,Uw,Vw,scl,scAll,{showInc:false,active:activeNow,truthOnly:true}); setLabel(P.fB,'G(x+w)','fB');
+  }
+  P.fB.parentElement.classList.toggle('active',activeNow);
+}
+function setLabel(canvas,text,cls){const lab=canvas.parentElement.querySelector('.panel-label');if(lab){lab.textContent=text;lab.className='panel-label '+cls;}}
+
+function drawVectors(ctx,pts,U,V,scl,scAll,opt){
+  const showTruth=$('chkTruth').checked;
+  if(showTruth)for(let i=0;i<pts.length;i++)arrow(ctx,pts[i].x*scl,pts[i].y*scl,S.TF[i][0]/scAll*scl,S.TF[i][1]/scAll*scl,'rgba(255,93,108,0.55)',1.3,5);
+  if(opt.truthOnly){ // on warped-G panel, just dots + truth
+    ctx.fillStyle=CSSv('--pt');for(const p of pts){ctx.beginPath();ctx.arc(p.x*scl,p.y*scl,2.2,0,7);ctx.fill();}return;
+  }
+  if(U)for(let i=0;i<pts.length;i++)arrow(ctx,pts[i].x*scl,pts[i].y*scl,U[i]*scl,V[i]*scl,CSSv('--vec'),opt.active?2.0:1.5,opt.active?6:5);
+  if(opt.showInc)for(let i=0;i<pts.length;i++){const x0=(pts[i].x+opt.Up[i])*scl,y0=(pts[i].y+opt.Vp[i])*scl;arrow(ctx,x0,y0,opt.dU[i]*scl,opt.dV[i]*scl,CSSv('--step'),1.9,5.5);}
+  ctx.fillStyle=CSSv('--pt');for(const p of pts){ctx.beginPath();ctx.arc(p.x*scl,p.y*scl,2.4,0,7);ctx.fill();}
+}
+function drawOverlay(ctx,Fim,Gim,dispW){
+  const sz=Fim.w,off=document.createElement('canvas');off.width=sz;off.height=sz;
+  const octx=off.getContext('2d'),id=octx.createImageData(sz,sz);
+  for(let i=0;i<sz*sz;i++){
+    const fl=0.299*Fim.r[i]+0.587*Fim.g[i]+0.114*Fim.b[i];
+    const gl=0.299*Gim.r[i]+0.587*Gim.g[i]+0.114*Gim.b[i];
+    // F -> red, G -> cyan; aligned => grayscale, misaligned => colour fringe
+    id.data[i*4]  =Math.max(0,Math.min(255,fl*255))|0;       // R from F
+    id.data[i*4+1]=Math.max(0,Math.min(255,gl*255))|0;       // G from warpedG
+    id.data[i*4+2]=Math.max(0,Math.min(255,gl*255))|0;       // B from warpedG
+    id.data[i*4+3]=255;
+  }
+  octx.putImageData(id,0,0);ctx.imageSmoothingEnabled=true;ctx.drawImage(off,0,0,dispW,dispW);
+}
+
+/* ---------- convergence plot ---------- */
+function renderPlot(uptoIdx){
+  const cv=$('plot'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const bars=[];
+  for(let i=0;i<=uptoIdx&&i<S.states.length;i++){const s=S.states[i];if(s.type==='solveadd')bars.push({lvl:s.lvl,step:s.meanStep*s.sc,current:(i===uptoIdx)});if(s.type==='upsample')bars.push({sep:true});}
+  if(!bars.length){ctx.fillStyle=CSSv('--faint');ctx.font='11px monospace';ctx.fillText('press Next to begin',16,H/2);return;}
+  const pad=28,bw=Math.max(6,(W-2*pad)/Math.max(12,bars.length)-3);let maxV=0;bars.forEach(b=>{if(b.step)maxV=Math.max(maxV,b.step);});maxV=Math.max(maxV,0.5);
+  ctx.strokeStyle=CSSv('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,H-pad);ctx.lineTo(W-6,H-pad);ctx.stroke();ctx.beginPath();ctx.moveTo(pad,8);ctx.lineTo(pad,H-pad);ctx.stroke();
+  ctx.fillStyle=CSSv('--faint');ctx.font='9px monospace';ctx.fillText('|Δ| px',4,14);
+  const yt=v=>{const t=Math.sqrt(v/maxV);return(H-pad)-t*(H-pad-14);};
+  const cols=['#46d4e6','#5ad1b0','#9b8cff','#ffd23f','#ff9f43'];let x=pad+4;
+  bars.forEach(b=>{if(b.sep){ctx.strokeStyle='rgba(124,255,178,0.5)';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x+2,10);ctx.lineTo(x+2,H-pad);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(124,255,178,0.8)';ctx.font='8px monospace';ctx.fillText('×2',x-3,8);x+=10;return;}const y=yt(b.step),h=(H-pad)-y;ctx.fillStyle=b.current?'#fff':cols[b.lvl%cols.length];ctx.globalAlpha=b.current?1:0.85;ctx.fillRect(x,y,bw,h);ctx.globalAlpha=1;if(b.current){ctx.fillStyle=CSSv('--ink');ctx.font='9px monospace';ctx.fillText(b.step.toFixed(2),x-2,y-4);}x+=bw+3;});
+}
+
+/* ---------- phase text + chips ---------- */
+function actionWord(st){
+  if(st.type==='enter')return 'warp';
+  if(st.type==='warp')return 'overlay';
+  if(st.type==='overlay')return 'solve';
+  if(st.type==='solveadd'){
+    // next action: another warp if more iters, else upsample/done
+    const ni=S.idx+1; if(ni<S.states.length){const n=S.states[ni];if(n.type==='warp')return 'warp';if(n.type==='upsample')return 'upsample';if(n.type==='enter')return 'enter';}return 'done';
+  }
+  if(st.type==='upsample')return 'warp';
+  return '';
+}
+function phaseText(st){
+  const L=S.P.levels;
+  if(st.type==='enter')return `<b>Level ${st.lvl}</b> (${S.PFc[st.lvl].w}²). True motion here is ÷${st.sc} of full-res — ${st.lvl===0?'small enough for LK\'s sub-pixel regime.':'a residual on top of coarser levels.'} Click to warp G by the current flow.`;
+  if(st.type==='warp')return `<b>Warp</b> L${st.lvl}, iter ${st.it+1}/${S.P.inner}. The right panel is G sampled at <b>x+w</b> (backward warp) — it has slid toward F. Misalignment that remains is the residual.`;
+  if(st.type==='overlay')return `<b>Overlay</b> — F (red) ⊕ warped-G (cyan) superimposed. Grey = aligned; colour fringes = leftover motion this step must still explain. Click to solve for it.`;
+  if(st.type==='solveadd')return `<span class="big">solve + add</span> · |Δw| = ${(st.meanStep*st.sc).toFixed(3)}px, residual ${st.meanRes.toFixed(4)}. One Gauss–Newton step: Δw=(AᵀA)⁻¹Aᵀy added to w. ${st.it===S.P.inner-1?'Last inner step — converged at this scale.':'Remainder left → iterate.'}`;
+  if(st.type==='upsample')return `<b>Upsample L${st.lvl}→L${st.to}</b> — positions ×2, vectors ×2. Same motion, finer grid.`;
+  return '';
+}
+
+/* ---------- navigation / render ---------- */
+function gotoIdx(i){
+  S.idx=Math.max(0,Math.min(S.states.length-1,i));
+  const st=S.states[S.idx];
+  for(let l=0;l<S.P.levels;l++)renderLevel(l,st);
+  renderPlot(S.idx);
+  // arrows
+  if(pyr.upArrow)pyr.upArrow.forEach(a=>{if(a)a.classList.remove('show');});
+  if(st.type==='upsample'&&pyr.upArrow&&pyr.upArrow[st.to])pyr.upArrow[st.to].classList.add('show');
+  // active level for traveling control
+  const activeLvl=st.type==='upsample'?st.to:st.lvl;
+  pyr.forEach((p,l)=>{p.row.classList.toggle('active',l===activeLvl);
+    if(l===activeLvl){
+      p.line.innerHTML=phaseText(st);
+      p.nx.textContent='('+actionWord(st)+')';
+      // chips
+      const ph=(st.type==='warp')?'warp':(st.type==='overlay')?'overlay':(st.type==='solveadd')?'solveadd':'';
+      p.chips.forEach(c=>c.classList.toggle('on',c.dataset.p===ph));
+      p.row.style.opacity='1';
+    } else {
+      p.row.style.opacity = (l<activeLvl)?'0.92':'0.55';
+    }
+  });
+  // sync global buttons
+  $('btnNext').disabled=(S.idx>=S.states.length-1);
+  pyr.forEach(p=>{p.nextBtn.disabled=(S.idx>=S.states.length-1);});
+  // scroll active level into comfortable view (only if offscreen)
+  const ar=pyr[activeLvl].row; const r=ar.getBoundingClientRect();
+  if(r.top<70||r.bottom>window.innerHeight-20){ar.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+function next(){ if(S.idx<S.states.length-1)gotoIdx(S.idx+1); else stopPlay(); }
+function skipLevel(){let i=S.idx+1;while(i<S.states.length-1&&S.states[i].type!=='enter')i++;gotoIdx(i);}
+let timer=null;
+function startPlay(){if(timer)return;S.playing=true;setPlayLabel('❚❚');timer=setInterval(()=>{if(S.idx>=S.states.length-1){stopPlay();return;}next();},600);}
+function stopPlay(){S.playing=false;if(timer){clearInterval(timer);timer=null;}setPlayLabel('▶');}
+function togglePlay(){S.playing?stopPlay():startPlay();}
+function setPlayLabel(t){$('btnPlay').textContent=t+' '+(t==='▶'?'Play':'Pause');pyr.forEach(p=>p.playBtn.textContent=t);}
+
+function bind(){
+  $('btnNext').onclick=next;$('btnPlay').onclick=togglePlay;
+  $('btnReset').onclick=()=>{stopPlay();gotoIdx(0);};$('btnLevel').onclick=skipLevel;
+  $('chkTruth').onchange=()=>gotoIdx(S.idx);
+  // flip controls
+  window._flipAll=false;
+  $('btnFlipAll').onclick=()=>{ window._flipAll=!window._flipAll;
+    $('btnFlipAll').classList.toggle('primary',window._flipAll);
+    $('btnFlipAll').textContent=window._flipAll?'⇄ flipping all':'⇄ flip all levels';
+    if(window._flipAll||$('chkFlip').checked)startFlip(); else stopFlip(); refreshFlipPanels(); };
+  $('chkFlip').onchange=()=>{ if($('chkFlip').checked||window._flipAll)startFlip(); else stopFlip(); refreshFlipPanels(); };
+  const sl=[['sLevels','vLevels',v=>v],['sWin','vWin',v=>v],['sInner','vInner',v=>v],['sSigma','vSigma',v=>(+v).toFixed(1)],['sTx','vTx',v=>v],['sTy','vTy',v=>v],['sSwirl','vSwirl',v=>(+v).toFixed(1)]];
+  sl.forEach(([s,l,f])=>{$(s).addEventListener('input',()=>{$(l).textContent=f($(s).value);});$(s).addEventListener('change',()=>{stopPlay();rebuild();});});
+  document.addEventListener('keydown',e=>{if(e.key==='n'||e.key==='N')next();else if(e.key===' '){e.preventDefault();togglePlay();}else if(e.key==='r'||e.key==='R'){stopPlay();gotoIdx(0);}});
+}
+bind();
+rebuild();
+// kick off flip loop if active-level flipping is on by default
+setTimeout(()=>{ if($('chkFlip').checked) startFlip(); }, 500);
+})();
+
+</script>
+</body>
+</html>
