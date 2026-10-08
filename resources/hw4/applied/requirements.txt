@@ -1,0 +1,12 @@
+# HW4 — Python dependencies
+# Install with:   pip install -r requirements.txt
+#
+# from-scratch part needs only numpy + matplotlib;
+# the applied tracking part also needs torch, torchvision and av (PyAV).
+# (Tested with: numpy 2.4, matplotlib 3.10, torch 2.12, torchvision 0.27, av 17.1)
+
+numpy
+matplotlib
+torch
+torchvision
+av            # PyAV — video I/O for the applied tracking notebook (bundles ffmpeg)
