@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Final Project — Modern Computer Vision — Winter 2026–27</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Technion_Logo.svg/330px-Technion_Logo.svg.png" alt="Technion" style="height:32px;width:auto;filter:brightness(0) invert(1);opacity:0.9;" onerror="this.style.display='none'">
+      <span>Modern Computer Vision</span>
+    </a>
+    <button class="nav-toggle" onclick="this.setAttribute('aria-expanded', document.querySelector('.nav-links').classList.toggle('open'))" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="schedule.html">Schedule</a></li>
+      <li><a href="project.html" class="active">Final Project</a></li>
+      <li><a href="../index.html">Previous course</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- CONTENT -->
+<section class="section">
+  <h1 class="section-title">Final Project</h1>
+  <p class="section-subtitle">Winter 2026–27</p>
+  <div class="prose">
+    <p><a href="resources/final_project.pdf" class="resource-link" target="_blank" rel="noopener">Download project guidelines (PDF)</a></p>
+    <div class="semester-note">
+      <p><strong>Proposal deadline: TBD.</strong> The final report, code and five-minute video will be due on a date to be announced after the exam period.</p>
+      <p><strong>This semester:</strong> submit a five-minute video in any format you choose. A recorded talk is welcome; an AI-assisted explainer in the style of 3Blue1Brown or any other style is encouraged. No live talk is required.</p>
+    </div>
+    <h3>What this is</h3>
+    <p>A small, self-contained piece of <strong>original research</strong> in computer vision. The point is to find a question that is genuinely open, however narrow, and answer it: propose something, build it, test it honestly, and report what you found. Scope should be modest. We are far more interested in a clear, well-executed idea than in an ambitious one that does not come together. Aim for work you would be comfortable showing to someone in the field, not for a grand result.</p>
+    <p><strong>The topic is entirely yours to choose</strong>, as long as it lives in computer vision. Theory counts if it brings something new. Any tools, models, libraries, or pretrained checkpoints are fair game.</p>
+    <p>If you already have a direction in mind, run with it. If you would like a starting point, a few directions that tend to work well:</p>
+    <ul>
+      <li>Take a recent paper you find interesting and push on it: an improvement, an extension, a case it did not handle, a claim worth testing.</li>
+      <li>Apply existing methods to a new kind of data, or in a setting where they have not been tried before.</li>
+      <li>Build on research you are already involved in, in your lab or elsewhere.</li>
+    </ul>
+    <h3>Proposal — 1 page, deadline TBD</h3>
+    <p>One page. Submit early if you can: if you do, we will make an effort to send feedback before the deadline. Cover:</p>
+    <ul>
+      <li><strong>Goal.</strong> What you are trying to do, in one or two sentences.</li>
+      <li><strong>Method.</strong> How you plan to do it.</li>
+      <li><strong>Prior work &amp; your delta.</strong> What has been done before, and what is new in your approach.</li>
+      <li><strong>Resources.</strong> What you will need, mostly compute (GPUs, memory, time).</li>
+      <li><strong>Challenges &amp; feasibility.</strong> What could go wrong, and why this fits in the time you have.</li>
+    </ul>
+    <h3>Deliverables</h3>
+    <ul>
+      <li><strong>Report</strong>, 2-3 pages, in LaTeX. Standard structure: abstract, introduction (including related work), method, results, discussion. Include figures; a good figure often explains more than a paragraph.</li>
+      <li><strong>Public GitHub repository</strong> with your code, so results can be reproduced.</li>
+      <li><strong>Video, 5 minutes.</strong> Choose any format you like, including a recorded talk. We encourage an AI-assisted explanatory video in the style of 3Blue1Brown, or any other style. Its quality is an important part of the grade, so prepare and refine it carefully. No live talk is required.</li>
+    </ul>
+    <h3>Groups</h3>
+    <ul>
+      <li>Groups must be <strong>4-5 people</strong>. We cannot accept groups smaller than 4.</li>
+      <li>We prefer <strong>5 over 4</strong>, and we ask groups with room to take in students who have not found a group.</li>
+      <li>We recommend <strong>mixing graduate and undergraduate students</strong>.</li>
+      <li>A shared sheet will be provided to help form and join groups.</li>
+    </ul>
+    <h3>Source disclosure</h3>
+    <p>For the final project, students are free to use any sources, including AI and existing works, as long as all sources are disclosed and all external code, methods or models are cited.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    Modern Computer Vision — <a href="https://www.technion.ac.il" target="_blank">Technion — Israel Institute of Technology</a> — Winter 2026–27
+  </p>
+</footer>
+
+</body>
+</html>
